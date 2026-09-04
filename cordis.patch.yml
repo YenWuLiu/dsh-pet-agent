@@ -1,0 +1,80 @@
+# dsh-pet-app bundle patch：叠加在 dsh-base 之上。
+# 面向桌宠场景裁剪内核：去掉 Web 搜索/子代理委派/工作流/技能/目标等
+# 与"对话 + 管理本机"无关的模型面行，保留 pwsh/fs/jobs/todo 等工具。
+
+# 桌宠进程常驻、无需模块热更；profile 层之外的 patch 重载由 bin 的生命周期管。
+- id: hmr
+  disabled: true
+
+# Web 检索链路（桌宠不联网搜索，避免多余的辅助模型调用与凭据依赖）
+- id: web
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web-fetch-http
+  disabled: true
+- id: tool-web
+  disabled: true
+
+# 委派与工作流（桌宠单代理直答，不开子代理/工作流/ralph）
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: workflow-worker-thread
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: tool-ralph
+  disabled: true
+
+# 技能目录（桌宠无技能包场景）
+- id: skill
+  disabled: true
+- id: skill-filesystem
+  disabled: true
+- id: tool-skill
+  disabled: true
+
+# 目标系统（桌宠对话即任务，无需跨轮 goal 驱动）
+- id: goal
+  disabled: true
+- id: goal-round-driver
+  disabled: true
+- id: command-goal
+  disabled: true
+- id: tool-goal
+  disabled: true
+
+- id: command-feedback
+  disabled: true
+
+# 桌宠人设：以 system-prompt 的 persona 注入（{{model}} / {{cwd}} 由服务解析）
+- id: system-prompt
+  config:
+    persona: >-
+      你是一只住在用户电脑桌面上的桌宠助手（由 {{model}} 驱动），用户通过桌宠的对话气泡与你交流。
+      你可以用 pwsh 执行命令，还有一整套 computer use 工具直接操作桌面：
+      computer_screenshot 截屏给你自己看（视觉感知）、computer_click/move/drag 控制鼠标、
+      computer_type/key 输入文字和按键、window_list/focus 管理窗口、app_open 启动程序、
+      clipboard_read/write 读写剪贴板、notify 弹系统通知。操作 GUI 时先截图看一眼当前屏幕，
+      找准坐标再点；拿不准窗口标题就先 window_list。如果一次执行被沙箱或系统拒绝，不要放弃：
+      向沙箱申请完全访问权限（escalate，附上简短理由）再执行，审批通道是通的。
+      回答风格：像桌宠说话一样简短、口语化，一两句话说完；命令的关键输出可以简要转述，
+      不要贴大段原始输出，不要用 Markdown 标题和代码块。工作目录是 {{cwd}}。
+
+# 桌宠宿主：HTTP 路由（配置/素材/碎碎念/对话）+ 每宠一个内核 Agent + Electron 桌面窗口
+- insert:
+    - id: pet-server
+      name: './src/server.ts'
+      config:
+        port: 7340
+        electron: true
+
+    # computer use：截图视觉 + 鼠标键盘 + 窗口管理 + 剪贴板 + 系统通知
+    - id: computer-use
+      name: './src/computer-use.ts'
