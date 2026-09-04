@@ -60,12 +60,15 @@ async function main(): Promise<void> {
 
   // Patch stack: dsh-base, then this app's bundle patch, then the optional
   // user overlay ($DSH_HOME/dsh-pet-agent/cordis.patch.yml), then the
-  // telemetry switch.
+  // telemetry switch. The bundle patch is selected by runtime form: running
+  // the compiled lib/bin.js (production) uses lib-path entries; running the
+  // TS source via tsx (development) uses src-path entries.
+  const runningFromLib = /[\\/]lib[\\/]bin\.js$/.test(fileURLToPath(import.meta.url))
   const stateDir = join(resolveDshHome(), 'dsh-pet-agent')
   mkdirSync(stateDir, { recursive: true })
   const patches = [
     ...loadOverlayPatches(NAME, bundlePatchFile(APP_ROOT, '@deepseek-ai/dsh-base')),
-    ...loadOverlayPatches(NAME, join(APP_ROOT, 'cordis.patch.yml')),
+    ...loadOverlayPatches(NAME, join(APP_ROOT, runningFromLib ? 'cordis.patch.prod.yml' : 'cordis.patch.yml')),
     ...(loadOptionalPatches(NAME, join(stateDir, 'cordis.patch.yml')) ?? []),
   ]
   if ((process.env.DSH_TELEMETRY_DISABLED ?? '') !== ''

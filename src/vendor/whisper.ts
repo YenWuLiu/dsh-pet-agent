@@ -15,7 +15,7 @@
  */
 
 import { BlockAssembler, createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm';
-import { supportsReasoningOff } from './llm-reasoning';
+import { supportsReasoningOff } from './llm-reasoning.ts';
 
 /** 生成失败原因（与 shared/whisper.ts 的 WhisperState 失败分支同构） */
 export type WhisperGenerateResult =
