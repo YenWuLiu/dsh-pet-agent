@@ -4,6 +4,7 @@
 内核 Agent 大脑。双击跟她聊天，她真的会用 pwsh、鼠标、键盘、窗口管理帮你
 干活——查系统、管文件、开程序、操作 GUI，还能截图"看"你的屏幕。
 
+![screenshot](docs/screenshot.png)
 
 ## 特性
 

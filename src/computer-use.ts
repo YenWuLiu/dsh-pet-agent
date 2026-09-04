@@ -80,6 +80,10 @@ const ShowWindow = user32.func('bool ShowWindow(void *hWnd, int nCmdShow)')
 const GetScreenWidth = user32.func('int GetSystemMetrics(int nIndex)') // SM_CXSCREEN=0
 const GetScreenHeight = user32.func('int GetSystemMetrics(int nIndex)')
 
+// Callback prototype for EnumWindows (koffi.register requires a named proto,
+// not an inline function-pointer type string).
+koffi.proto('bool PET_EnumWindowsProc(void *hwnd, intptr lparam)')
+
 const INPUT_TYPE_MOUSE = 0
 const INPUT_TYPE_KEYBOARD = 1
 const MOUSEEVENTF_LEFTDOWN = 0x0002
@@ -163,7 +167,7 @@ function listWindows(): Array<{ hwnd: unknown; hwndText: string; title: string }
       }
     }
     return true
-  }, 'bool (*)(void *, intptr)')
+  }, 'PET_EnumWindowsProc *')
   try {
     EnumWindows(cb, 0)
   } finally {
