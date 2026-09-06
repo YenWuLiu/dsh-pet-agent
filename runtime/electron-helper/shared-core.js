@@ -336,7 +336,7 @@ function whisperBubbleView(state) {
 		role: "label",
 		text: state.text
 	}];
-	const msg = state.reason === "provider-missing" ? "当前对话未配置模型，碎碎念不可用" : "碎碎念生成失败" + (state.message ? "：" + state.message : "");
+	const msg = state.reason === "provider-missing" ? "尚未配置模型：右键桌宠 → 设置，填写 API Key、接口地址与模型" : "碎碎念生成失败" + (state.message ? "：" + state.message : "");
 	return [{
 		role: "label",
 		text: msg

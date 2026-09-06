@@ -24,10 +24,17 @@ import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { flattenPetList, readAllConfig, type ConfigPaths } from './vendor/config.ts'
 import { generateWhisper } from './vendor/whisper.ts'
-import { chatWithAgent, closeAllPetAgents, ensurePetAgent, getModelOverride, petIdForSession, setModelOverride } from './agent-chat.ts'
+import { chatWithAgent, ensurePetAgent, getModelOverride, petIdForSession } from './agent-chat.ts'
+import {
+  applyPetModel,
+  clearPetModel,
+  petApiKeyConfigured,
+  restorePetModel,
+  validatePetModelConfig,
+  type PetModelConfig,
+} from './model-config.ts'
 import { resolveElectronExe, spawnPetElectron, type PetWindowSpec } from './electron.ts'
 // Empty type imports carry the Context service/event merges.
-import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-user-approval'
 
 const execFileAsync = promisify(execFile)
@@ -35,8 +42,8 @@ const execFileAsync = promisify(execFile)
 /** Stable Cordis plugin name. */
 export const name = 'pet-server'
 
-/** Core services the pet backend consumes. */
-export const inject = ['agents', 'agentDefaultModel', 'sessions', 'llm']
+/** Core services the pet backend consumes (model access goes through the pet's own route — see model-config.ts). */
+export const inject = ['agents', 'sessions', 'llm', 'settings', 'credentials']
 
 /** Plugin config: HTTP port and whether to spawn the desktop helper. */
 export interface Config {
@@ -164,7 +171,12 @@ export function apply(ctx: Context, config: Config): void {
    */
   const bridgePetEvents = async (petId: string): Promise<void> => {
     if (bridgedPets.has(petId)) return
-    const chat = await ensurePetAgent(ctx, petId)
+    let chat
+    try {
+      chat = await ensurePetAgent(ctx, petId)
+    } catch {
+      return // no model configured (or agent creation failed): chatWithAgent reports it
+    }
     if (bridgedPets.has(petId)) return
     bridgedPets.add(petId)
     chat.onEvent((event) => {
@@ -269,11 +281,12 @@ export function apply(ctx: Context, config: Config): void {
     })
   })
 
-  // ── settings (autostart via registry Run key + model route override) ─────
+  // ── settings (autostart via registry Run key + pet-owned model config) ───
   const stateDir = join(resolveDshHome(), 'dsh-pet-agent')
   const settingsFile = join(stateDir, 'settings.json')
   interface PetSettings {
-    model?: { provider: string; model: string } | null
+    /** Non-secret model fields only; the API key lives in the credential store (model-config.ts). */
+    model?: PetModelConfig | null
   }
   const readSettings = async (): Promise<PetSettings> => {
     try { return JSON.parse(await readFile(settingsFile, 'utf8')) as PetSettings } catch { return {} }
@@ -282,9 +295,12 @@ export function apply(ctx: Context, config: Config): void {
     await mkdir(stateDir, { recursive: true })
     await writeFile(settingsFile, JSON.stringify(s, null, 2) + '\n')
   }
-  // Apply the saved model override at boot (creation-time route in agent-chat).
-  void readSettings().then((s) => {
-    if (s.model !== undefined && s.model !== null) setModelOverride(s.model)
+  // Restore the saved model config at boot (re-registers the dsh-pet route and
+  // the creation-time override; the key comes back from the credential store).
+  void readSettings().then(async (s) => {
+    if (s.model === undefined || s.model === null) return
+    const validated = validatePetModelConfig(s.model)
+    if (validated.ok) await restorePetModel(ctx, validated.config)
   }).catch(() => undefined)
 
   const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
@@ -335,7 +351,7 @@ export function apply(ctx: Context, config: Config): void {
     }
     const merged = readAllConfig(paths)
     const entry = flattenPetList(merged).find(p => String(p.id) === petId)
-    const result = await generateWhisper(ctx, petWhisperPrompt(entry, petId))
+    const result = await generateWhisper(ctx, getModelOverride(), petWhisperPrompt(entry, petId))
     if (!result.ok) {
       sendJson(res, 200, { ok: false, reason: result.reason, message: result.message })
       return
@@ -379,8 +395,7 @@ export function apply(ctx: Context, config: Config): void {
       return
     }
     if (rest === 'balance' && req.method === 'GET') {
-      let provider = 'unknown'
-      try { provider = ctx.agentDefaultModel.currentSelection().provider } catch { /* no selection */ }
+      const provider = getModelOverride()?.provider ?? 'unconfigured'
       sendJson(res, 200, { ok: false, provider, reason: 'unsupported' })
       return
     }
@@ -418,15 +433,14 @@ export function apply(ctx: Context, config: Config): void {
     }
     if (rest === 'settings' && req.method === 'GET') {
       const saved = await readSettings()
-      let effective = getModelOverride()
-      if (effective === undefined) {
-        try { effective = ctx.agentDefaultModel.currentSelection() } catch { effective = undefined }
-      }
+      const model = saved.model === undefined || saved.model === null
+        ? null
+        : { ...saved.model, hasApiKey: await petApiKeyConfigured(ctx) }
       sendJson(res, 200, {
         ok: true,
         autostart: await autostartRead(),
-        model: saved.model ?? null,
-        effective: effective ?? null,
+        model,
+        effective: getModelOverride() ?? null,
       })
       return
     }
@@ -450,28 +464,32 @@ export function apply(ctx: Context, config: Config): void {
       if (body.model !== undefined) {
         const saved = await readSettings()
         if (body.model === null) {
-          setModelOverride(undefined)
+          // Clear: drop the provider route, the stored key, and the override.
+          try {
+            await clearPetModel(ctx)
+          } catch (error) {
+            sendJson(res, 200, { ok: false, reason: 'model-error', message: error instanceof Error ? error.message : String(error) })
+            return
+          }
           saved.model = null
           await writeSettings(saved)
-          await closeAllPetAgents()
         } else {
-          const m = body.model as { provider?: unknown; model?: unknown }
-          const provider = String(m.provider ?? '').trim()
-          const model = String(m.model ?? '').trim()
-          if (provider === '' || model === '') {
-            sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'provider/model 不能为空' })
+          const m = body.model as { apiKey?: unknown }
+          const validated = validatePetModelConfig(body.model)
+          if (!validated.ok) {
+            sendJson(res, 200, { ok: false, reason: 'bad-request', message: validated.message })
             return
           }
+          // Empty key field = keep the stored one (first-time setup must supply it).
+          const apiKey = typeof m.apiKey === 'string' && m.apiKey.trim() !== '' ? m.apiKey.trim() : undefined
           try {
-            await ctx.llm.resolveModelInfo(provider, model)
+            await applyPetModel(ctx, validated.config, apiKey)
           } catch (error) {
-            sendJson(res, 200, { ok: false, reason: 'model-invalid', message: `模型不可用：${error instanceof Error ? error.message : String(error)}` })
+            sendJson(res, 200, { ok: false, reason: 'model-error', message: error instanceof Error ? error.message : String(error) })
             return
           }
-          setModelOverride({ provider, model })
-          saved.model = { provider, model }
+          saved.model = validated.config
           await writeSettings(saved)
-          await closeAllPetAgents()
         }
       }
       sendJson(res, 200, { ok: true })

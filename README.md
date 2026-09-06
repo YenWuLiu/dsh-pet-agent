@@ -14,7 +14,7 @@
 - **流式气泡**：正在思考… → 正在执行 pwsh… → 回复逐字出现
 - **审批气泡**（可选）：越权操作在宠物上弹「允许一次/拒绝」确认框
 - **跨重启记忆**：重启后她还记得你叫什么
-- **设置卡**：右键 → 设置——开机自启（注册表 Run 键、无窗口启动）、模型切换（provider/model，留空跟随系统默认）
+- **设置卡**：右键 → 设置——开机自启（注册表 Run 键、无窗口启动）、模型配置（协议 / 接口地址 / API Key / 模型 id，桌宠独立配置，不跟随 dsh 部署默认）
 - **内核即库**：不装 dsh CLI、不需要 monorepo——整个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 内核作为普通 npm 依赖运行（`@deepseek-ai/*@0.1.2-rc.1`）
 
 ## 快速开始
@@ -26,10 +26,7 @@ pnpm start       # = node --import tsx/esm src/bin.ts
 
 启动后宠物出现在桌面右上角。需要 Node.js ≥ 22.19 与 pnpm ≥ 10。
 
-**模型凭据**（二选一）：
-
-- 环境变量 `DEEPSEEK_API_KEY`
-- 或 `~/.dsh/` 下的凭据/设置文件（与 dsh CLI 共用；`~/.dsh` 只是数据目录，不依赖 dsh 产品）
+**模型配置**：右键桌宠 → 设置，填写接口协议（OpenAI 兼容 / OpenAI Responses / Anthropic）、接口地址（baseURL）、API Key 与模型 id 即可——支持 DeepSeek、通义、月之暗面、OpenRouter 等任何 OpenAI 兼容端点以及 Claude。API Key 写入凭据存储（`~/.dsh/.credentials.yaml`，0600），不进配置文件；未配置时对话会提示先完成设置（不再跟随 dsh 部署的默认模型）。
 
 ### 玩法示例
 

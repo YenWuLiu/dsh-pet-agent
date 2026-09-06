@@ -1294,8 +1294,9 @@ class PetSprite {
     deny.addEventListener('click', () => decide('rejected'));
   }
 
-  // 设置弹窗（内核桌宠扩展）：开机自启（注册表 Run 键，host 读写）+ 模型路由（provider/model，
-  // 留空跟随系统默认；保存后 host 关闭旧 Agent，下一句对话起用新模型）。
+  // 设置弹窗（内核桌宠扩展）：开机自启（注册表 Run 键，host 读写）+ 桌宠自己的模型配置
+  // （协议/接口地址/API Key/模型 id——不再跟随 DSH 部署默认；保存后 host 注册 dsh-pet
+  // 路由并关闭旧 Agent，下一句对话起用新模型）。
   // 打开时 GET /settings 拉当前值；保存 PUT /settings，失败在框内显式提示。
   showSettingsDialog() {
     if (this.settingsOpen) return;
@@ -1305,7 +1306,7 @@ class PetSprite {
 
     const root = document.createElement('div');
     root.style.cssText =
-      'position:fixed;z-index:2147483002;width:300px;background:rgba(255,255,255,.98);' +
+      'position:fixed;z-index:2147483002;width:320px;background:rgba(255,255,255,.98);' +
       'border:1px solid rgba(0,0,0,.12);border-radius:10px;box-shadow:0 10px 32px rgba(0,0,0,.22);' +
       "color:#2b2b2b;font-size:13px;line-height:1.6;padding:12px 14px;user-select:none;" +
       "font-family:'ShangshouSoftCandy','Yuanti SC','YouYuan','幼圆','Comic Sans MS','PingFang SC','Microsoft YaHei',sans-serif";
@@ -1326,21 +1327,71 @@ class PetSprite {
     autoRow.appendChild(autoText);
     root.appendChild(autoRow);
 
-    // 模型路由
-    const modelLabel = document.createElement('div');
-    modelLabel.textContent = '模型（provider/model，留空跟随系统默认）';
-    modelLabel.style.cssText = 'margin-bottom:4px';
-    root.appendChild(modelLabel);
+    const fieldCss =
+      'width:100%;box-sizing:border-box;border:1px solid rgba(0,0,0,.18);border-radius:7px;' +
+      'padding:5px 8px;font-size:12px;font-family:inherit;outline:none;margin-bottom:2px;background:#fff';
+    const labelOf = (text) => {
+      const d = document.createElement('div');
+      d.textContent = text;
+      d.style.cssText = 'margin-bottom:4px';
+      root.appendChild(d);
+      return d;
+    };
+
+    // 模型配置（桌宠独立配置，不跟随 DSH 部署默认）
+    labelOf('接口协议');
+    const protocolSel = document.createElement('select');
+    protocolSel.style.cssText = fieldCss;
+    const PROTOCOLS = [
+      { id: 'openai-completions', label: 'OpenAI 兼容（DeepSeek / 通义 / 月之暗面 / OpenRouter…）', base: 'https://api.deepseek.com' },
+      { id: 'openai-responses', label: 'OpenAI Responses', base: 'https://api.openai.com/v1' },
+      { id: 'anthropic-messages', label: 'Anthropic（Claude）', base: 'https://api.anthropic.com' },
+    ];
+    for (const p of PROTOCOLS) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.label;
+      protocolSel.appendChild(opt);
+    }
+    root.appendChild(protocolSel);
+
+    labelOf('接口地址（baseURL）');
+    const baseInput = document.createElement('input');
+    baseInput.type = 'text';
+    baseInput.placeholder = '如 https://api.deepseek.com';
+    baseInput.style.cssText = fieldCss;
+    root.appendChild(baseInput);
+
+    labelOf('API Key');
+    const keyInput = document.createElement('input');
+    keyInput.type = 'password';
+    keyInput.placeholder = 'sk-…';
+    keyInput.style.cssText = fieldCss;
+    keyInput.autocomplete = 'off';
+    root.appendChild(keyInput);
+    const keyHint = document.createElement('div');
+    keyHint.style.cssText = 'color:rgba(43,43,43,.5);font-size:11px;margin-bottom:6px';
+    root.appendChild(keyHint);
+
+    labelOf('模型 id');
     const modelInput = document.createElement('input');
     modelInput.type = 'text';
-    modelInput.placeholder = '如 deepseek-official/deepseek-v4-flash';
-    modelInput.style.cssText =
-      'width:100%;box-sizing:border-box;border:1px solid rgba(0,0,0,.18);border-radius:7px;' +
-      'padding:5px 8px;font-size:12px;font-family:inherit;outline:none;margin-bottom:2px';
+    modelInput.placeholder = '如 deepseek-chat / gpt-4o-mini / claude-sonnet-4-5';
+    modelInput.style.cssText = fieldCss;
     root.appendChild(modelInput);
+
     const modelHint = document.createElement('div');
     modelHint.style.cssText = 'color:rgba(43,43,43,.5);font-size:11px;margin-bottom:8px;white-space:pre-wrap;overflow-wrap:anywhere';
     root.appendChild(modelHint);
+
+    // 切换协议时预填该协议的常用端点（仅在用户没手填过时）
+    let baseTouched = false;
+    baseInput.addEventListener('input', () => { baseTouched = true; });
+    protocolSel.addEventListener('change', () => {
+      if (baseTouched && baseInput.value.trim() !== '') return;
+      const p = PROTOCOLS.find((x) => x.id === protocolSel.value);
+      if (p) baseInput.value = p.base;
+    });
 
     // 状态行（错误/成功提示）
     const status = document.createElement('div');
@@ -1358,8 +1409,10 @@ class PetSprite {
         (primary ? 'background:#4a7dff;color:#fff' : 'background:rgba(0,0,0,.07);color:#2b2b2b');
       return b;
     };
+    const clear = mkBtn('清除配置', false);
     const cancel = mkBtn('取消', false);
     const save = mkBtn('保存', true);
+    row.appendChild(clear);
     row.appendChild(cancel);
     row.appendChild(save);
     root.appendChild(row);
@@ -1375,31 +1428,7 @@ class PetSprite {
     };
     cancel.addEventListener('click', close);
 
-    // 载入当前值
-    fetch(BASE + '/settings', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((s) => {
-        autoBox.checked = !!s.autostart;
-        modelInput.value = s.model ? s.model.provider + '/' + s.model.model : '';
-        modelHint.textContent = '当前生效：' + (s.effective ? s.effective.provider + '/' + s.effective.model : '未配置');
-      })
-      .catch((e) => {
-        status.textContent = '读取设置失败：' + String(e && e.message ? e.message : e);
-      });
-
-    save.addEventListener('click', () => {
-      status.textContent = '';
-      const raw = modelInput.value.trim();
-      let model = null;
-      if (raw !== '') {
-        const idx = raw.indexOf('/');
-        if (idx <= 0 || idx === raw.length - 1) {
-          status.textContent = '格式应为 provider/model（留空 = 跟随系统默认）';
-          return;
-        }
-        model = { provider: raw.slice(0, idx).trim(), model: raw.slice(idx + 1).trim() };
-      }
-      save.disabled = true;
+    const putSettings = (model, done) => {
       fetch(BASE + '/settings', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
@@ -1411,13 +1440,54 @@ class PetSprite {
             close();
           } else {
             status.textContent = '保存失败：' + ((r && r.message) || '未知错误');
-            save.disabled = false;
+            done();
           }
         })
         .catch((e) => {
           status.textContent = '保存异常：' + String(e && e.message ? e.message : e);
-          save.disabled = false;
+          done();
         });
+    };
+
+    // 载入当前值
+    fetch(BASE + '/settings', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((s) => {
+        autoBox.checked = !!s.autostart;
+        if (s.model) {
+          if (PROTOCOLS.some((p) => p.id === s.model.protocol)) protocolSel.value = s.model.protocol;
+          baseInput.value = s.model.baseURL || '';
+          modelInput.value = s.model.model || '';
+          keyHint.textContent = s.model.hasApiKey ? '已保存 API Key，留空表示不修改' : '尚未保存 API Key，请填写';
+        } else {
+          keyHint.textContent = '首次配置必填；密钥写入系统凭据存储，不进配置文件';
+          const p = PROTOCOLS.find((x) => x.id === protocolSel.value);
+          if (p) baseInput.value = p.base;
+        }
+        modelHint.textContent = '当前生效：' + (s.effective ? s.effective.provider + '/' + s.effective.model : '未配置');
+      })
+      .catch((e) => {
+        status.textContent = '读取设置失败：' + String(e && e.message ? e.message : e);
+      });
+
+    save.addEventListener('click', () => {
+      status.textContent = '';
+      const baseURL = baseInput.value.trim();
+      const model = modelInput.value.trim();
+      if (baseURL === '' || model === '') {
+        status.textContent = '接口地址与模型 id 必填（或点「清除配置」停用模型）';
+        return;
+      }
+      save.disabled = true;
+      putSettings(
+        { protocol: protocolSel.value, baseURL, model, apiKey: keyInput.value.trim() },
+        () => { save.disabled = false; },
+      );
+    });
+    clear.addEventListener('click', () => {
+      status.textContent = '';
+      clear.disabled = true;
+      putSettings(null, () => { clear.disabled = false; });
     });
   }
 

@@ -20,19 +20,23 @@ const pool = new Map<string, ChatAgent>()
 /** session id -> petId (approval requests carry an Agent; this maps it back). */
 const sessionToPet = new Map<string, string>()
 
-/** Explicit model route override (undefined = follow agentDefaultModel's current selection). */
+/**
+ * The pet's own model route (provider/model over the pet-registered `dsh-pet`
+ * route — see model-config.ts). Undefined means the user has not configured a
+ * model yet: the pet does NOT fall back to the DSH deployment's selection.
+ */
 let modelOverride: { provider: string; model: string } | undefined
 
 /**
  * Replace the model route used for FUTURE agent creation. Existing pool
  * entries keep their route; call closeAllPetAgents to recycle them.
- * @param selection - the new override, or undefined to follow the deployment default.
+ * @param selection - the pet's own route, or undefined when unconfigured.
  */
 export function setModelOverride(selection: { provider: string; model: string } | undefined): void {
   modelOverride = selection
 }
 
-/** Read the current model route override (undefined = deployment default). */
+/** Read the pet's model route (undefined = not configured yet). */
 export function getModelOverride(): { provider: string; model: string } | undefined {
   return modelOverride
 }
@@ -53,17 +57,25 @@ export async function closeAllPetAgents(): Promise<void> {
  * history on the next process start — that is the pet's cross-restart
  * memory. A resume rejection falls back to a fresh id (memory lost, pet
  * still boots).
- * @param ctx - plugin context carrying agents/agentDefaultModel.
+ * @param ctx - plugin context carrying agents.
  * @param petId - the pet instance id (one Agent per id).
  * @returns the chat handle.
  */
 export async function ensurePetAgent(ctx: Context, petId: string): Promise<ChatAgent> {
   const existing = pool.get(petId)
   if (existing !== undefined) return existing
+  // No deployment-default fallback: the pet runs only on the user's own model
+  // configuration (settings dialog → model-config.ts).
+  if (modelOverride === undefined) {
+    throw new Error('尚未配置模型：右键桌宠 → 设置，填写 API Key、接口地址与模型')
+  }
   let chat: ChatAgent
-  const route = modelOverride === undefined
-    ? { sessionId: `pet-${petId}`, resume: true as const }
-    : { sessionId: `pet-${petId}`, resume: true as const, provider: modelOverride.provider, model: modelOverride.model }
+  const route = {
+    sessionId: `pet-${petId}`,
+    resume: true as const,
+    provider: modelOverride.provider,
+    model: modelOverride.model,
+  }
   try {
     chat = await createChatAgent(ctx, route)
   } catch (error) {
@@ -87,7 +99,7 @@ export function petIdForSession(sessionId: string): string | undefined {
 /**
  * Run one chat turn for a pet and return the reply in the shared/chat.ts
  * contract. Turns serialize per pet inside ChatAgent.send.
- * @param ctx - plugin context carrying agents/agentDefaultModel.
+ * @param ctx - plugin context carrying agents.
  * @param petId - the pet instance id.
  * @param text - the user's message.
  * @returns the chat response payload.
