@@ -106,6 +106,8 @@ async function loadConfig() {
     refreshSec: (merged && merged.main && merged.main.eventsRefreshSec) || {},
     // 拖拽抛掷物理参数（顶层全局，所有宠物共用；合并器已填内置默认）
     physics: (merged && merged.main && merged.main.physics) || S.DEFAULT_PHYSICS,
+    // 工作状态气泡文案（顶层二维数组，外层索引 = 档位；合并器已校验结构）
+    workStatusTexts: (merged && merged.main && merged.main.workStatusTexts) || [],
   };
 }
 
@@ -213,6 +215,9 @@ class PetSprite {
     this.settingsOpen = false;
     // 双击打开对话框：单击动画经 280ms 去抖，双击取消之
     this.clickTimer = null;
+    // 工作状态联动（上游 workStatus 六档动画 + 气泡文案）：1s 轮询 /work-status，ts 变化即切档
+    this.workStatusLoopTimer = null;
+    this.prevWorkStatusTs = 0;
 
     // DOM：sprite 钉在窗口内 (margin.l, margin.t)；宠物"位置"= sprite 位置，窗口随余量外扩
     this.el = document.createElement('div');
@@ -1226,6 +1231,42 @@ class PetSprite {
     void refresh();
   }
 
+  // 工作状态联动（上游六档动画接进内核桌宠）：1s 轻轮询 /work-status?pet=<id>，
+  // ts 变化即按档位播 animations.events.workStatus 对应动画 + 从 workStatusTexts 抽气泡文案。
+  // 档位索引（与动画数组严格同序）：0 thinking / 1 working / 2 result / 3 waiting / 4 success / 5 error。
+  startWorkStatusLoop() {
+    if (this.workStatusLoopTimer !== null) return;
+    if (!this.pet.workStatusEnabled) return;
+    const pool = this.animations.events?.workStatus;
+    if (!Array.isArray(pool) || pool.length < 6) return;
+    const refresh = async () => {
+      try {
+        const petId = encodeURIComponent(this.pet.id);
+        const res = await fetch(BASE + '/work-status' + '?pet=' + petId, { cache: 'no-store' });
+        if (!res.ok) return;
+        const d = (await res.json().catch(() => null)) || {};
+        const ts = typeof d.ts === 'number' ? d.ts : 0;
+        if (ts === 0 || ts === this.prevWorkStatusTs) return;
+        this.prevWorkStatusTs = ts;
+        if (d.state === null || d.state === undefined) return; // 空闲：不打扰随机动画链
+        const idx = { thinking: 0, working: 1, result: 2, waiting: 3, success: 4, error: 5 }[d.state];
+        if (idx === undefined) return;
+        const name = pool[idx];
+        if (!name) return;
+        // 档位文案（每档多句随机抽；缺省该档只播动画不弹字）
+        const texts = (config.workStatusTexts || [])[idx];
+        const text = Array.isArray(texts) && texts.length > 0 ? texts[Math.floor(Math.random() * texts.length)] : '';
+        this.stopMove();
+        if (text) this.showWhisper(text); // 复用碎碎念链路：气泡 10s 自动消失
+        this.playOnce(name);
+      } catch (e) {
+        console.warn('[dsh-pet] 工作状态轮询异常 pet=' + this.pet.id, e);
+      }
+    };
+    this.workStatusLoopTimer = window.setInterval(() => void refresh(), 1000);
+    void refresh();
+  }
+
   // 权限确认框：白底圆角卡（气泡同款字体）+ 工具名/理由 + 「允许一次 / 拒绝」两个按钮。
   // 位置吸附身体命中区右上角（与对话弹窗同一定位源），超视口夹回。
   showApprovalDialog(req) {
@@ -1637,6 +1678,8 @@ function startLoops() {
   for (const s of sprites) s.startBroadcastLoop();
   // 权限确认（内核桌宠扩展）：每只宠物独立 2s 轻轮询（startApprovalLoop）——bubble 模式下有待决即弹确认框
   for (const s of sprites) s.startApprovalLoop();
+  // 工作状态联动（上游六档动画）：每只启用宠物独立 1s 轻轮询（startWorkStatusLoop）
+  for (const s of sprites) s.startWorkStatusLoop();
 
   // 手动 /balance 触发：1s 轻量轮询触发计数（端点已禁止缓存），计数变化且余额启用时立即刷新余额并递增 tick
   let triggerBaseline = null;

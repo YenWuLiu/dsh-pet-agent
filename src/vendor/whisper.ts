@@ -7,12 +7,17 @@
  * - provider/model 取桌宠自己的模型配置（model-config.ts 注册的 dsh-pet 路由；
  *   未配置 → provider-missing，不再回退 DSH 部署默认）；
  * - system = 用户配置的 whisperPrompt（人设），user = 一个极简的"说句话"请求；
+ * - 不显式限 maxTokens：推理模型会把思考计入预算，显式小上限只会截断正文报
+ *   "模型未返回文本"；不传由 dsh-llm 按适配器 defaultMaxTokens 兜底；
  * - reasoningEffort: 'off' —— 仅当模型声明支持 reasoning effort（含 "off"）时传，
  *   关闭深度思考：碎碎念只求随口一句，不开推理（省时省 token）。无 reasoning 元数据的
  *   模型（如 reasoningEfforts: false）显式传 off 会被 dsh-llm 判为 UNSUPPORTED_REASONING_EFFORT
  *   并折叠成空流（表现为"模型未返回文本"），因此这类模型省略该字段（语义等价于不传）；
  * - 流式收集 + BlockAssembler 拼装文本；生成失败显式返回结构化原因，不伪造文案；
  * - 短超时（LLM 冷启动/慢响应时快速放弃，不留挂起请求）。
+ *
+ * 三方合并说明：结构 = 上游新版（移除显式 maxTokens）；sel 参数 = 桌宠自有模型路由
+ * （pet-agent 仓库 model-config 功能）。
  */
 
 import { BlockAssembler, createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm';
@@ -22,7 +27,7 @@ import { supportsReasoningOff } from './llm-reasoning.ts';
 export type WhisperGenerateResult =
   { ok: true; text: string } | { ok: false; reason: 'provider-missing' | 'generate-error'; message?: string };
 
-/** 单次生成超时（ms）：骈骈念不需要长输出，30s 足够 */
+/** 单次生成超时（ms）：碎碎念不需要长输出，30s 足够 */
 const TIMEOUT_MS = 30_000;
 
 /**
@@ -61,9 +66,8 @@ export async function generateWhisper(
       }),
     ],
     system,
-    // vendored 修订：60 → 300。内核 0.1.2 的模型在未显式关闭 reasoning 时，
-    // 推理 token 可能吃光 60 的预算导致空文本；300 给推理留余量，输出仍是一句话。
-    maxTokens: 300,
+    // 不显式限 maxTokens：推理模型会把思考计入预算，显式小上限只会截断正文报
+    // "模型未返回文本"；不传由 dsh-llm 按适配器 defaultMaxTokens 兜底，短指令输出仍短。
     temperature: 1,
     // 统一关闭深度思考：碎碎念不需要推理，只求随口一句（仅模型声明支持时传）
     ...(supportsOff ? { reasoningEffort: ReasoningEffortId('off') } : {}),

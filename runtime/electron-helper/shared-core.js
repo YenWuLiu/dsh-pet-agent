@@ -94,7 +94,7 @@ const anchorPixel = (o) => {
 
 //#endregion
 //#region src/shared/balance.ts
-const TIMEOUT_MS$1 = 2e4;
+const TIMEOUT_MS$2 = 2e4;
 const RETRIES$1 = 2;
 /** 带超时 + 重试的 GET（host 已内置重试，这里再兜底网络抖动）。
 *  浏览器传默认相对路径；桌面模式（Electron，file:// 页面）传绝对 URL。 */
@@ -102,7 +102,7 @@ async function getWithRetry$1(url) {
 	let last;
 	for (let i = 0; i <= RETRIES$1; i++) {
 		try {
-			const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS$1) });
+			const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS$2) });
 			if (res.ok) return res;
 			last = new Error("HTTP " + res.status);
 		} catch (e) {
@@ -293,14 +293,14 @@ function balanceBubbleView(state) {
 
 //#endregion
 //#region src/shared/whisper.ts
-const TIMEOUT_MS = 3e4;
+const TIMEOUT_MS$1 = 3e4;
 const RETRIES = 2;
 /** 带超时 + 重试的 GET（host 生成 LLM 调用可能较慢，超时放宽；桌面 file:// 页面需绝对 URL） */
 async function getWithRetry(url) {
 	let last;
 	for (let i = 0; i <= RETRIES; i++) {
 		try {
-			const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+			const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS$1) });
 			if (res.ok) return res;
 			last = new Error("HTTP " + res.status);
 		} catch (e) {
@@ -336,7 +336,7 @@ function whisperBubbleView(state) {
 		role: "label",
 		text: state.text
 	}];
-	const msg = state.reason === "provider-missing" ? "尚未配置模型：右键桌宠 → 设置，填写 API Key、接口地址与模型" : "碎碎念生成失败" + (state.message ? "：" + state.message : "");
+	const msg = state.reason === "provider-missing" ? "当前对话未配置模型，碎碎念不可用" : "碎碎念生成失败" + (state.message ? "：" + state.message : "");
 	return [{
 		role: "label",
 		text: msg
@@ -363,6 +363,7 @@ function flattenConfigPets(merged) {
 			animationWeights: conf.animationWeights,
 			eventsRefreshSec: conf.eventsRefreshSec,
 			physics: conf.physics,
+			workStatusTexts: conf.workStatusTexts,
 			assetRoot: entry,
 			extra: entry !== "main"
 		});
@@ -438,7 +439,8 @@ function frameToToast(frame) {
 /** 事件名 → 分类标签（无映射时用事件名本身） */
 const EVENT_LABELS = {
 	balance: "余额档位",
-	whisper: "碎碎念"
+	whisper: "碎碎念",
+	workStatus: "工作状态"
 };
 const leaf = (anim) => ({
 	label: anim,
@@ -1146,6 +1148,38 @@ function mountScorePopup(opts) {
 }
 
 //#endregion
+//#region src/shared/work-status.ts
+const WORK_STATUS_STATES = [
+	"thinking",
+	"working",
+	"result",
+	"waiting",
+	"success",
+	"error"
+];
+const WORK_STATUS_INDEX = {
+	thinking: 0,
+	working: 1,
+	result: 2,
+	waiting: 3,
+	success: 4,
+	error: 5
+};
+const TIMEOUT_MS = 1e4;
+async function fetchWorkStatus(baseUrl = "/dsh-pet-7340/work-status") {
+	const res = await fetch(baseUrl, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+	if (!res.ok) throw new Error("dsh-pet: work-status HTTP " + res.status);
+	const raw = await res.json().catch(() => null);
+	if (!raw || typeof raw !== "object") throw new Error("dsh-pet: work-status 响应非法");
+	const state = raw.state === null || WORK_STATUS_STATES.includes(raw.state) ? raw.state : null;
+	return {
+		state,
+		task: typeof raw.task === "string" ? raw.task : null,
+		ts: Number(raw.ts) || 0
+	};
+}
+
+//#endregion
 exports.ACCEL_GAIN_MAX = ACCEL_GAIN_MAX
 exports.ACCEL_REF = ACCEL_REF
 exports.CANVAS_H = CANVAS_H
@@ -1188,6 +1222,8 @@ exports.SQ_SOFT_SPEED = SQ_SOFT_SPEED
 exports.SQ_SQUASH = SQ_SQUASH
 exports.TRAIL_KEEP_MS = TRAIL_KEEP_MS
 exports.WINDOW_LABELS = WINDOW_LABELS
+exports.WORK_STATUS_INDEX = WORK_STATUS_INDEX
+exports.WORK_STATUS_STATES = WORK_STATUS_STATES
 exports.anchorPixel = anchorPixel
 exports.balanceBubbleView = balanceBubbleView
 exports.balanceEventIndex = balanceEventIndex
@@ -1202,6 +1238,7 @@ exports.fetchBalanceState = fetchBalanceState
 exports.fetchTriggerCount = fetchTriggerCount
 exports.fetchWhisperState = fetchWhisperState
 exports.fetchWhisperTrigger = fetchWhisperTrigger
+exports.fetchWorkStatus = fetchWorkStatus
 exports.flattenConfigPets = flattenConfigPets
 exports.frameToToast = frameToToast
 exports.isDesktopVisible = isDesktopVisible

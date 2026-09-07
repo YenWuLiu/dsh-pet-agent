@@ -25,6 +25,7 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { flattenPetList, readAllConfig, type ConfigPaths } from './vendor/config.ts'
 import { generateWhisper } from './vendor/whisper.ts'
 import { chatWithAgent, ensurePetAgent, getModelOverride, petIdForSession } from './agent-chat.ts'
+import { reduceWorkStatus, type HostWorkStatusState } from './vendor/work-status.ts'
 import {
   applyPetModel,
   clearPetModel,
@@ -161,6 +162,12 @@ export function apply(ctx: Context, config: Config): void {
   /** Per-pet streaming accumulator: text-deltas accumulate into a growing reply bubble (throttled). */
   const streamAcc = new Map<string, { text: string; lastTs: number; thinkingShown: boolean }>()
 
+  /** Per-pet work-status snapshot (upstream dsh-pet workStatus contract: {state, task, ts}). */
+  const workStatusCache = new Map<string, { state: HostWorkStatusState | null; task: string | null; ts: number }>()
+  const setWorkStatus = (petId: string, state: HostWorkStatusState | null): void => {
+    workStatusCache.set(petId, { state, task: null, ts: Date.now() })
+  }
+
   /**
    * Bridge one pet's Agent events into its broadcast cache (once per pet).
    * The visible arc of one turn on a heavy-reasoning model:
@@ -183,6 +190,14 @@ export function apply(ctx: Context, config: Config): void {
       if (process.env.DSH_PET_DEBUG_EVENTS === '1') {
         process.stderr.write(`[events] pet=${petId} type=${event.type}\n`)
       }
+      // Work-status tier (upstream reducer over our ChatAgentEvent vocabulary):
+      // turn-start→thinking, tool-call→working, tool-result→result,
+      // approval-asked→waiting, turn-end→success/error/idle.
+      if (event.type === 'turn-start') setWorkStatus(petId, reduceWorkStatus({ type: 'turn/start' }))
+      if (event.type === 'tool-call') setWorkStatus(petId, reduceWorkStatus({ type: 'tool/call', data: { name: event.name } }))
+      if (event.type === 'tool-result') setWorkStatus(petId, reduceWorkStatus({ type: 'tool/result' }))
+      if (event.type === 'approval-asked') setWorkStatus(petId, reduceWorkStatus({ type: 'approval/asked' }))
+      if (event.type === 'turn-end') setWorkStatus(petId, reduceWorkStatus({ type: 'turn/end', data: { reason: { kind: event.kind } } }))
       if (event.type === 'tool-call') {
         broadcastCache.set(petId, { text: `正在执行 ${event.name}…`, ts: Date.now() })
         return
@@ -493,6 +508,11 @@ export function apply(ctx: Context, config: Config): void {
         }
       }
       sendJson(res, 200, { ok: true })
+      return
+    }
+    if (rest === 'work-status' && req.method === 'GET') {
+      const hit = workStatusCache.get(petId)
+      sendJson(res, 200, { ok: true, state: hit?.state ?? null, task: hit?.task ?? null, ts: hit?.ts ?? 0 }, { 'cache-control': 'no-store' })
       return
     }
     if (rest === 'broadcast' && req.method === 'GET') {

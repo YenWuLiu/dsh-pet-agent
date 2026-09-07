@@ -28,16 +28,19 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentHandle, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 
 /** UI-safe progress vocabulary projected from the instance's session log. */
 export type ChatAgentEvent =
+  | { type: 'turn-start' }
   | { type: 'text-delta'; text: string }
   | { type: 'reasoning-delta'; text: string }
   | { type: 'tool-call'; name: string; arguments: string }
   | { type: 'tool-result'; error: { name: string; code: string } | undefined }
+  | { type: 'approval-asked'; toolName: string }
   | { type: 'turn-end'; kind: string; error: { code: string; message: string } | undefined }
 
 /** Outcome of one {@link ChatAgent.send} turn. */
@@ -98,6 +101,7 @@ export interface ChatAgent {
 
 /** Map one session event to the public vocabulary; undefined when not progress-relevant. */
 function mapEvent(event: SessionEvent): ChatAgentEvent | undefined {
+  if (event.type === 'turn/start') return { type: 'turn-start' }
   if (event.type === 'assistant/chunk') {
     const chunk = event.data.chunk
     if (chunk.type === 'text-delta') return { type: 'text-delta', text: chunk.text }
@@ -109,6 +113,9 @@ function mapEvent(event: SessionEvent): ChatAgentEvent | undefined {
   }
   if (event.type === 'tool/result') {
     return { type: 'tool-result', error: event.data.error }
+  }
+  if (event.type === 'approval/asked') {
+    return { type: 'approval-asked', toolName: event.data.toolName }
   }
   if (event.type === 'turn/end') {
     const reason = event.data.reason
