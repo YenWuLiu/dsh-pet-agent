@@ -113,7 +113,8 @@ async function sendFile(res: ServerResponse, file: string, contentType: string):
   res.writeHead(200, {
     'content-type': contentType,
     'content-length': size,
-    'cache-control': 'public, max-age=3600',
+    // 素材可能被热替换（自制素材管线），禁缓存：Chromium 媒体缓存无校验器时会把旧 webm 放满 max-age
+    'cache-control': 'no-store',
     ...CORS,
   })
   const stream = createReadStream(file)

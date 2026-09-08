@@ -5,3 +5,9 @@ lib/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+# 自制素材的 AI 原始视频体积大且可重新生成，不进仓库
+assets-custom/raw/
+# 本地生成对比备份（大文件，可再生成）
+assets-custom/raw-local/
+# 本地工具链（ffmpeg 二进制）
+tools/
