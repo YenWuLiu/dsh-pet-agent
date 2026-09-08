@@ -1002,11 +1002,10 @@ class PetSprite {
     e.preventDefault();
     this.stopThrow(); // 菜单弹出前停住飞行中的宠物
     this.stopMove(); // 菜单悬停期间宠物不漫游
-    // 桌面专属工具根项（碎碎念 / 对话 / 设置 / 回到初始位置）+ 共享菜单树（动作→分类→具体动画）
+    // 桌面专属工具根项（对话 / 设置 / 回到初始位置）+ 共享菜单树（动作→分类→具体动画）
     // 「打开网站」「查看余额」已按需求下线：无 DSH 网站可开、/balance 在本宿主恒为 unsupported。
-    // 碎碎念/对话项无条件显示：手动触发不受 whisperEnabled 限制（该字段只影响自动周期轮询）
+    // 碎碎念根项已按需求下线（事件池是占位，无手动触发入口）
     const tools = [
-      { label: '碎碎念', action: 'whisper' },
       { label: '对话', action: 'chat' },
       { label: '设置', action: 'settings' },
       { label: '回到初始位置', action: 'home' },

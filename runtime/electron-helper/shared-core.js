@@ -466,6 +466,8 @@ function buildMenuTree(animations) {
 	});
 	const events = animations.events ?? {};
 	for (const key of Object.keys(events)) {
+		// 菜单下线 balance/whisper 两档（本宿主的占位事件池不进菜单；workStatus 保留）
+		if (key === "balance" || key === "whisper") continue;
 		const pool = events[key] ?? [];
 		if (pool.length) groups.push({
 			label: EVENT_LABELS[key] ?? key,
