@@ -5,8 +5,6 @@ DeepSeek Harness 内核 Agent 大脑。双击跟她聊天，她真的会用 pwsh
 键盘、窗口管理帮你干活——查系统、管文件、开程序、操作 GUI，还能截图"看"
 你的屏幕。
 
-![screenshot](docs/screenshot.png)
-
 ## 角色与素材：全部自制
 
 桌宠形象「小蓝」——二头身 Q 版蓝鲸小女仆（渐变蓝卷发、环形呆毛、鱼鳍耳、
