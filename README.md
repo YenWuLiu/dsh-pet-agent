@@ -35,7 +35,7 @@ DeepSeek Harness 内核 Agent 大脑。双击跟她聊天，她真的会用 pwsh
 - **审批气泡**（可选）：越权操作在宠物上弹「允许一次/拒绝」确认框
 - **跨重启记忆**：重启后她还记得你叫什么
 - **设置卡**：右键 → 设置——开机自启（注册表 Run 键、无窗口启动）、模型配置（协议 / 接口地址 / API Key / 模型 id，桌宠独立配置，不跟随 dsh 部署默认）
-- **内核即库**：不装 dsh CLI、不需要 monorepo——整个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 内核作为普通 npm 依赖运行（`@deepseek-ai/*@0.1.2-rc.1`）
+- **内核即库**：不装 dsh CLI、不需要 monorepo——整个 [dsh-kernel](https://github.com/YenWuLiu/dsh-kernel-0.1.2-rc.1) 内核作为普通 npm 依赖运行（`@deepseek-ai/*@0.1.2-rc.1`）
 
 ## 快速开始
 
@@ -103,4 +103,4 @@ pnpm start       # = node lib/bin.js；开发期可用 pnpm dev（tsx 直跑 src
 - **第三方**: 见 [NOTICE.md](NOTICE.md)——本项目代码是衍生作品：
   - [dsh-pet](https://github.com/PC2005-cloud/dsh-pet)（MIT 代码；桌面壳与
     shared-core 在本项目中有修改；**仅代码，不含其素材**）
-  - [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)（MIT，内核经 npm 引用）
+  - [dsh-kernel](https://github.com/YenWuLiu/dsh-kernel-0.1.2-rc.1)（MIT，内核经 npm 引用）
