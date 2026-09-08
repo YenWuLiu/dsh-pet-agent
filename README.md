@@ -99,8 +99,7 @@ pnpm start       # = node lib/bin.js；开发期可用 pnpm dev（tsx 直跑 src
 
 ## 许可证与署名
 
-- **本项目代码与 `assets/` 素材**: [MIT](LICENSE)——素材为自制（AI 生成 + 自建管线，
-  见 [assets/README.md](assets/README.md)）
+- **本项目代码与 `assets/` 素材**: [MIT](LICENSE)——素材为自制（AI 生成 + 自建管线）
 - **第三方**: 见 [NOTICE.md](NOTICE.md)——本项目代码是衍生作品：
   - [dsh-pet](https://github.com/PC2005-cloud/dsh-pet)（MIT 代码；桌面壳与
     shared-core 在本项目中有修改；**仅代码，不含其素材**）
