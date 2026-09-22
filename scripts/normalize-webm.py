@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""webm 归一化：任意分辨率 → 桌宠规格 640×360 VP9-Alpha（首帧对齐待机锚点）
+"""归一化：任意分辨率 → 桌宠规格 640×360 VP9-Alpha（首帧对齐待机锚点）
+
+输入支持 `.webm`（VP9-Alpha 成品）与 `.mov`（手工抠好的带 alpha 母版，
+如 ProRes 4444 / qtrle / PNG-in-MOV）——两者的输入解码器不同，按扩展名自动分派。
 
 用法：
   python scripts/normalize-webm.py <源目录> <输出目录> [--anchor 待机呼吸] [--target-h 0.75]
@@ -33,8 +36,18 @@ CW, CH = 640, 360          # 输出画布
 FEET_Y = 330               # 引擎常量 shared-core.js: FEET_Y=330（命中区 y 50~335）
 ANCHOR_X = 320             # 画布水平中心（HIT_BOX x 200~440 的中心）
 ALPHA_THR = 40             # 角色可见像素阈值
+SRC_EXTS = ('.webm', '.mov')   # .webm = VP9-Alpha 成品；.mov = 手工抠好的带 alpha 母版
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+
+def in_decoder(path):
+    """输入解码器参数。
+
+    VP9-Alpha 的 alpha 存在 WebM 的 BlockAdditional 侧数据里，**必须**用 libvpx-vp9
+    解码器才出 alpha（原生 vp9 解码器只给 yuv420p）；反过来，对 MOV（ProRes 4444 /
+    qtrle / PNG）硬指定 libvpx-vp9 会直接解码失败。所以按扩展名分派。"""
+    return ['-c:v', 'libvpx-vp9'] if Path(path).suffix.lower() == '.webm' else []
 
 
 def probe_size(path):
@@ -55,7 +68,7 @@ def measure(path, w, h):
     只统计**最大不透明连通块**（= 角色本体）：即梦片带的"AI生成"水印是独立小块，
     若按 alpha>thr 整体取 bbox，量到的是"头顶→水印底"，据此缩放会把角色压小、
     脚底悬空（2026-09 实测事故）。"""
-    cmd = [str(FFMPEG), '-hide_banner', '-loglevel', 'error', '-c:v', 'libvpx-vp9',
+    cmd = [str(FFMPEG), '-hide_banner', '-loglevel', 'error'] + in_decoder(path) + [
            '-i', str(path), '-f', 'rawvideo', '-pix_fmt', 'rgba', '-']
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10 ** 8)
     n = w * h * 4
@@ -163,8 +176,8 @@ def convert(path, out, p, crf):
     vf = ('crop=%d:%d:%d:%d,scale=%d:%d:flags=lanczos,'
           'pad=%d:%d:%d:%d:color=0x00000000,format=yuva420p,setsar=1'
           % (cw, ch, x0, y0, sw, sh, CW, CH, px, py))
-    cmd = [str(FFMPEG), '-hide_banner', '-loglevel', 'error', '-y',
-           '-c:v', 'libvpx-vp9', '-i', str(path), '-vf', vf,
+    cmd = [str(FFMPEG), '-hide_banner', '-loglevel', 'error', '-y'] + in_decoder(path) + [
+           '-i', str(path), '-vf', vf,
            '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-auto-alt-ref', '0',
            '-crf', str(crf), '-b:v', '0', '-row-mt', '1', '-an', str(out)]
     subprocess.run(cmd, check=True)
@@ -182,9 +195,10 @@ def main():
     args = ap.parse_args()
 
     src_dir, out_dir = Path(args.src_dir), Path(args.out_dir)
-    files = sorted(src_dir.glob('*.webm'))
+    files = sorted(f for f in src_dir.iterdir()
+                   if f.is_file() and f.suffix.lower() in SRC_EXTS)
     if not files:
-        raise SystemExit('源目录没有 webm：%s' % src_dir)
+        raise SystemExit('源目录没有 %s：%s' % ('/'.join(SRC_EXTS), src_dir))
     target_h = args.target_h * CH
     print('目标角色高 %.0fpx，画布 %dx%d，脚底 y=%d（引擎 FEET_Y）' % (target_h, CW, CH, FEET_Y))
     if args.anchor:
@@ -204,7 +218,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     print()
     for f, p in plans.items():
-        out = out_dir / f.name
+        out = out_dir / (f.stem + '.webm')   # .mov 母版也要产出 .webm 容器
         convert(f, out, p, args.crf)
         print('✓ %s → %s（%d KB，%d 帧 @ %gfps）' % (
             f.name, out, out.stat().st_size // 1024, p['frames'], p['fps']))

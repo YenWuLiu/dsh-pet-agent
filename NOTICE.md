@@ -1,6 +1,6 @@
 # NOTICE — 第三方代码与素材署名 / Third-Party Notices
 
-DSH-PET-AGENT 的**代码**来自上游 dsh-pet（MIT）；**动画素材为本项目自制，不随仓库分发**。
+DSH-PET-AGENT 的**代码**来自上游 dsh-pet（MIT）；**动画素材为本项目自制**。
 `assets/pic/` 的界面图标目前仍沿用上游素材包，受「开源可用、禁止商用」约束。
 
 The **code** of DSH-PET-AGENT comes from the upstream dsh-pet project (MIT). The
@@ -35,7 +35,7 @@ The UI icons in `assets/pic/` still come from the upstream asset pack and are
 ## 2. 素材：动画自制 + 界面图标沿用上游（非商业授权）
 
 - **本项目自制（不适用下面那条限制）**:
-  - `assets/webm/` — 动画素材目录，**本仓库不包含任何动画文件**（空目录）。
+  - `assets/webm/` — 动画素材目录，**只放本项目自制的动画**（不附带上游素材包）。
     动画由本项目自行生产：规格契约见 [`assets/README.md`](assets/README.md)，
     生成流程见 `docs/动画生成清单.md` 与 `docs/自制素材指南.md`，
     转码与验收工具见 `scripts/key-video.py`、`scripts/normalize-webm.py`、

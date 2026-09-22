@@ -1,10 +1,10 @@
 # assets/ 素材说明（DSH-PET-AGENT）
 
-**本目录的动画素材为本项目自制；本仓库不附带任何动画文件。**
+**本目录的动画素材为本项目自制；不附带上游素材包。**
 
 | 内容 | 状态 | 授权 |
 |---|---|---|
-| `webm/` | **空目录** —— 动画由本项目自己生产，出片后放进这里 | 本项目自制，按仓库根 LICENSE（MIT） |
+| `webm/` | 本项目自制的动画（逐条出片后放进这里） | 本项目自制，按仓库根 LICENSE（MIT） |
 | `fonts/上首软糖体.ttf` | 本项目自带界面字体 **站酷快乐体 2016（HappyZcool-2016）** | 版权方条款（内嵌 `(c) Copyright LuiBingKe 2016`） |
 | `pic/` | 手套拖拽光标 ×2 + 通知表情图标 ×6，**目前仍沿用上游 dsh-pet 素材包** | 上游条款：允许开源使用，**禁止商用** |
 | `config.jsonc` | 由上游动画池配置改写；动画名已替换为本项目自制清单（当前为占位名） | 配置本身随代码 MIT |
@@ -52,8 +52,8 @@
 
 # Asset Notice (DSH-PET-AGENT)
 
-**The animations in this directory are produced by this project; this repository
-ships no animation files.** `webm/` is an empty directory on purpose.
+**The animations in this directory are produced by this project; the upstream
+asset pack is not shipped here.**
 
 - `webm/` — own productions (MIT, same as the code), see the spec table above.
 - `fonts/上首软糖体.ttf` — this project's UI font (HappyZcool-2016); the file name is a
