@@ -32,3 +32,7 @@ tools/**/out/
 .npm-cache-tmp-research/
 # 升级内核前的 ~/.dsh 快照：内含本机会话记忆与凭据，绝不入库
 .upgrade-backup/
+
+# Python 字节码缓存（import 脚本时生成，非源码）
+__pycache__/
+*.pyc
