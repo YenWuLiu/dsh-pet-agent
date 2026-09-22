@@ -1,0 +1,716 @@
+/**
+ * Pet server: the desktop pet's backend on the dsh kernel. Serves the
+ * dsh-pet `/dsh-pet-7340` route contract over plain HTTP on 127.0.0.1
+ * (config, assets, whisper, chat, broadcast stub), drives one
+ * kernel Agent per pet for chat (with the full dsh-base tool catalog — pwsh
+ * computer management included), and spawns the Electron desktop helper for
+ * desktop-visible pets.
+ *
+ * The chat route is the upgrade over upstream dsh-pet: replies come from a
+ * real kernel Agent (session-persisted, tool-using), not a bare LLM call.
+ *
+ * @module @deepseek-ai/dsh-pet-app/server
+ */
+
+import { createReadStream, existsSync } from 'node:fs'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { join, normalize, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { autostartRead, autostartReadCommand, autostartWrite, resolveAutostartPlan, STATE_DIR } from './autostart.ts'
+import { flattenPetList, readAllConfig, type ConfigPaths } from './vendor/config.ts'
+import { generateWhisper } from './vendor/whisper.ts'
+import { cancelPetTurn, chatWithAgent, ensurePetAgent, getModelOverride, petIdForSession, streamPetTurn } from './agent-chat.ts'
+import { reduceWorkStatus, type HostWorkStatusState } from './vendor/work-status.ts'
+import {
+  applyPetModel,
+  clearPetModel,
+  ensureOpenCodeSessionId,
+  petApiKeyConfigured,
+  restorePetModel,
+  validatePetModelConfig,
+  type PetModelConfig,
+} from './model-config.ts'
+import { resolveElectronExe, spawnPetElectron, type PetWindowSpec } from './electron.ts'
+// Empty type imports carry the Context service/event merges.
+import type {} from '@deepseek-ai/dsh-user-approval'
+import type {} from '@deepseek-ai/dsh-cmdline'
+
+/** Stable Cordis plugin name. */
+export const name = 'pet-server'
+
+/** Core services the pet backend consumes (model access goes through the pet's own route — see model-config.ts). */
+export const inject = ['agents', 'sessions', 'llm', 'settings', 'credentials']
+
+/** Plugin config: HTTP port and whether to spawn the desktop helper. */
+export interface Config {
+  port: number
+  electron: boolean
+}
+
+export const Config: z<Config> = z.object({
+  port: z.number().default(7341),
+  electron: z.boolean().default(true),
+})
+
+/** This app's package root (src/ sits one level below it). */
+const APP_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
+
+const ROUTE_PREFIX = '/dsh-pet-7340'
+
+const MIME: Record<string, string> = {
+  '.webm': 'video/webm',
+  '.png': 'image/png',
+  '.json': 'application/json; charset=utf-8',
+  '.jsonc': 'application/json; charset=utf-8',
+  '.ttf': 'font/ttf',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+}
+
+const CORS: Record<string, string> = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type',
+}
+
+/** Normalize and confine a relative asset path to its root (path-traversal guard). */
+function resolveAsset(root: string, rel: string): string | undefined {
+  if (rel.length === 0) return undefined
+  const candidate = normalize(join(root, rel))
+  const rootWithSep = root.endsWith(sep) ? root : root + sep
+  if (candidate !== root && !candidate.startsWith(rootWithSep)) return undefined
+  return candidate
+}
+
+function resolveExisting(root: string, rel: string): string | undefined {
+  const candidate = resolveAsset(root, rel)
+  return candidate !== undefined && existsSync(candidate) ? candidate : undefined
+}
+
+function sendJson(res: ServerResponse, status: number, obj: unknown, headers: Record<string, string> = {}): void {
+  const body = JSON.stringify(obj)
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-cache',
+    ...CORS,
+    ...headers,
+  })
+  res.end(body)
+}
+
+function sendText(res: ServerResponse, status: number, text: string): void {
+  res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', ...CORS })
+  res.end(text)
+}
+
+async function sendFile(res: ServerResponse, file: string, contentType: string): Promise<void> {
+  const { size } = await stat(file)
+  res.writeHead(200, {
+    'content-type': contentType,
+    'content-length': size,
+    // 素材可能被热替换（自制素材管线），禁缓存：Chromium 媒体缓存无校验器时会把旧 webm 放满 max-age
+    'cache-control': 'no-store',
+    ...CORS,
+  })
+  const stream = createReadStream(file)
+  stream.on('error', () => { res.destroy() })
+  stream.pipe(res)
+}
+
+async function readBody(req: IncomingMessage): Promise<string> {
+  let raw = ''
+  for await (const chunk of req) raw += chunk as string
+  return raw
+}
+
+/** The pet's final persona for whisper: its entry's whisperPrompt plus a name line. */
+function petWhisperPrompt(entry: Record<string, unknown> | undefined, petId: string): string {
+  const base = typeof entry?.whisperPrompt === 'string' ? entry.whisperPrompt : ''
+  const petName = typeof entry?.name === 'string' && entry.name !== '' ? entry.name : petId
+  return `${base}\n你的名字是${petName}。`.trim()
+}
+
+/** Desktop-visible pets of one merged config product (display desktop|both). */
+function desktopPets(merged: Record<string, Record<string, unknown>>): PetWindowSpec[] {
+  return flattenPetList(merged)
+    .filter(p => p.display === 'desktop' || p.display === 'both')
+    .map(p => ({ id: String(p.id), size: Number(p.size) > 0 ? Number(p.size) : 462 }))
+}
+
+/** Mount the pet backend. */
+export function apply(ctx: Context, config: Config): void {
+  const assetsRoot = join(APP_ROOT, 'assets')
+  const userRoot = join(resolveDshHome(), 'dsh-pet')
+  const paths: ConfigPaths = {
+    defaultFile: join(assetsRoot, 'config.jsonc'),
+    userFile: join(userRoot, 'main-config.json'),
+    petDir: join(userRoot, 'pet'),
+  }
+  const userAnimRoot = join(userRoot, 'main-animation', 'webm')
+
+  /** Per-pet whisper cache: same-pet polls inside the interval reuse the line. */
+  const whisperCache = new Map<string, { text: string; ts: number }>()
+
+  /** Per-pet progress broadcast: the renderer polls /broadcast 1s and pops a bubble on ts change. */
+  const broadcastCache = new Map<string, { text: string; ts: number }>()
+  /** Pets whose Agent events are already bridged to the broadcast cache. */
+  const bridgedPets = new Set<string>()
+  /** Per-pet streaming accumulator: text-deltas accumulate into a growing reply bubble (throttled). */
+  const streamAcc = new Map<string, { text: string; lastTs: number; thinkingShown: boolean }>()
+
+  /**
+   * Per-pet conversation transcript, memory only (the durable memory is the
+   * kernel session log). `GET /chat` replays it so a dialog reopened later in
+   * the same run shows the exchange again; a restart starts the panel empty
+   * while the pet still remembers the conversation herself.
+   */
+  interface ChatTurnEntry {
+    role: 'user' | 'pet'
+    text: string
+    ts: number
+  }
+  const CHAT_TRANSCRIPT_MAX = 40
+  const chatTranscripts = new Map<string, ChatTurnEntry[]>()
+  const pushTranscript = (petId: string, entry: ChatTurnEntry): void => {
+    const list = chatTranscripts.get(petId) ?? []
+    list.push(entry)
+    if (list.length > CHAT_TRANSCRIPT_MAX) list.splice(0, list.length - CHAT_TRANSCRIPT_MAX)
+    chatTranscripts.set(petId, list)
+  }
+
+  /** Per-pet work-status snapshot (upstream dsh-pet workStatus contract: {state, task, ts}). */
+  const workStatusCache = new Map<string, { state: HostWorkStatusState | null; task: string | null; ts: number }>()
+  const setWorkStatus = (petId: string, state: HostWorkStatusState | null): void => {
+    workStatusCache.set(petId, { state, task: null, ts: Date.now() })
+  }
+
+  /**
+   * Bridge one pet's Agent events into its broadcast cache (once per pet).
+   * The visible arc of one turn on a heavy-reasoning model:
+   *   正在思考… → (tool) 正在执行 pwsh… → 正在思考… → reply text streaming.
+   * Reasoning deltas raise one "thinking" bubble per turn (their text is
+   * noise); text deltas accumulate into a streaming reply bubble (ts bumped
+   * at most once per 800ms so the 1s polling renderer re-pops growing text).
+   */
+  const bridgePetEvents = async (petId: string): Promise<void> => {
+    if (bridgedPets.has(petId)) return
+    let chat
+    try {
+      chat = await ensurePetAgent(ctx, petId)
+    } catch {
+      return // no model configured (or agent creation failed): chatWithAgent reports it
+    }
+    if (bridgedPets.has(petId)) return
+    bridgedPets.add(petId)
+    chat.onEvent((event) => {
+      if (process.env.DSH_PET_DEBUG_EVENTS === '1') {
+        process.stderr.write(`[events] pet=${petId} type=${event.type}\n`)
+      }
+      // Work-status tier (upstream reducer over our ChatAgentEvent vocabulary):
+      // turn-start→thinking, tool-call→working, tool-result→result,
+      // approval-asked→waiting, turn-end→success/error/idle.
+      if (event.type === 'turn-start') setWorkStatus(petId, reduceWorkStatus({ type: 'turn/start' }))
+      if (event.type === 'tool-call') setWorkStatus(petId, reduceWorkStatus({ type: 'tool/call', data: { name: event.name } }))
+      if (event.type === 'tool-result') setWorkStatus(petId, reduceWorkStatus({ type: 'tool/result' }))
+      if (event.type === 'approval-asked') setWorkStatus(petId, reduceWorkStatus({ type: 'approval/asked' }))
+      if (event.type === 'turn-end') setWorkStatus(petId, reduceWorkStatus({ type: 'turn/end', data: { reason: { kind: event.kind } } }))
+      if (event.type === 'tool-call') {
+        broadcastCache.set(petId, { text: `正在执行 ${event.name}…`, ts: Date.now() })
+        return
+      }
+      if (event.type === 'reasoning-delta') {
+        const acc = streamAcc.get(petId) ?? { text: '', lastTs: 0, thinkingShown: false }
+        if (!acc.thinkingShown) {
+          acc.thinkingShown = true
+          broadcastCache.set(petId, { text: '正在思考…', ts: Date.now() })
+        }
+        streamAcc.set(petId, acc)
+        return
+      }
+      if (event.type === 'text-delta') {
+        const acc = streamAcc.get(petId) ?? { text: '', lastTs: 0, thinkingShown: false }
+        acc.text += event.text
+        const now = Date.now()
+        if (now - acc.lastTs >= 800) {
+          acc.lastTs = now
+          broadcastCache.set(petId, { text: acc.text, ts: now })
+        }
+        streamAcc.set(petId, acc)
+        return
+      }
+      if (event.type === 'turn-end') {
+        // Flush: a fast answer can stream entirely inside one 800ms throttle
+        // window — without this the final (complete) text never broadcasts.
+        const acc = streamAcc.get(petId)
+        if (acc !== undefined && acc.text !== '') {
+          broadcastCache.set(petId, { text: acc.text, ts: Date.now() })
+        }
+      }
+    })
+  }
+
+  // ── approval answerer (bubble mode supported) ────────────────────────────
+  // approval/request is a waterfall seam: return an outcome to claim, next()
+  // to delegate. Modes (DSH_PET_APPROVAL):
+  //   'auto'   — allow everything with an audit line (default; also the
+  //              headless/no-window stance).
+  //   'bubble' — park the request in a pending map; the pet window polls
+  //              /approval/pending and the user's click POSTs /approval/decide.
+  //              90s without a decision resolves 'unavailable' (fail closed).
+  // Under danger-full-access composition no requests fire at all; in ask
+  // policy (e.g. DSH_PERMISSION_MODE=workspace-write) this is the answerer.
+  type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
+  interface PendingApproval {
+    id: string
+    petId: string | undefined
+    toolName: string
+    reason: string | undefined
+    resolve: (outcome: ApprovalOutcome) => void
+    timer: NodeJS.Timeout
+  }
+  const approvalMode = (process.env.DSH_PET_APPROVAL ?? 'auto') === 'bubble' ? 'bubble' : 'auto'
+  const pendingApprovals = new Map<string, PendingApproval>()
+  let approvalSeq = 0
+  const APPROVAL_TIMEOUT_MS = 90_000
+
+  const settleApproval = (id: string, outcome: ApprovalOutcome): boolean => {
+    const pending = pendingApprovals.get(id)
+    if (pending === undefined) return false
+    pendingApprovals.delete(id)
+    clearTimeout(pending.timer)
+    pending.resolve(outcome)
+    return true
+  }
+
+  ctx.on('approval/request', (req, next) => {
+    void next
+    if (approvalMode === 'auto') {
+      process.stderr.write(`${name}: approval ${req.toolName}${req.reason !== undefined ? ` (${req.reason})` : ''} -> allowed-once (pet auto-answerer)\n`)
+      return Promise.resolve('allowed-once' as const)
+    }
+    const petId = petIdForSession(String(req.agent.session.id))
+    const id = `apv-${String(++approvalSeq)}`
+    return new Promise<ApprovalOutcome>((resolve) => {
+      const timer = setTimeout(() => {
+        if (settleApproval(id, 'unavailable')) {
+          process.stderr.write(`${name}: approval ${id} ${req.toolName} timed out -> unavailable\n`)
+        }
+      }, APPROVAL_TIMEOUT_MS)
+      pendingApprovals.set(id, {
+        id,
+        petId,
+        toolName: req.toolName,
+        reason: req.reason,
+        resolve,
+        timer,
+      })
+      req.signal?.addEventListener('abort', () => { settleApproval(id, 'cancelled') }, { once: true })
+      if (petId !== undefined) {
+        broadcastCache.set(petId, { text: `需要权限：${req.toolName}，请在宠物上确认`, ts: Date.now() })
+      }
+      process.stderr.write(`${name}: approval pending ${id} ${req.toolName} (bubble mode)\n`)
+    })
+  })
+
+  // ── settings (autostart via registry Run key + pet-owned model config) ───
+  const settingsFile = join(STATE_DIR, 'settings.json')
+  interface PetSettings {
+    /** Non-secret model fields only; the API key lives in the credential store (model-config.ts). */
+    model?: PetModelConfig | null
+    /**
+     * 对话形式：`bubble` = 宠物头顶气泡（默认，用户反馈更喜欢这种「对话感」）；
+     * `dialog` = 常驻对话面板。与模型配置无关，单独保存。
+     */
+    chatForm?: 'bubble' | 'dialog'
+  }
+  const readSettings = async (): Promise<PetSettings> => {
+    try { return JSON.parse(await readFile(settingsFile, 'utf8')) as PetSettings } catch { return {} }
+  }
+  const writeSettings = async (s: PetSettings): Promise<void> => {
+    await mkdir(STATE_DIR, { recursive: true })
+    await writeFile(settingsFile, JSON.stringify(s, null, 2) + '\n')
+  }
+  // Restore the saved model config at boot (re-registers the dsh-pet route and
+  // the creation-time override; the key comes back from the credential store).
+  void readSettings().then(async (s) => {
+    if (s.model === undefined || s.model === null) return
+    const validated = validatePetModelConfig(s.model)
+    if (validated.ok) await restorePetModel(ctx, validated.config)
+  }).catch(() => undefined)
+
+  // ── bounded shutdown (tray menu 退出 / headless callers) ─────────────────
+  // `appExit` is the launcher's shutdown controller (bin.ts wires it to
+  // dispose-tree-then-exit). Falling back to SIGTERM keeps the route working
+  // when the tree is embedded by a host that provides no cmdline.
+  const requestQuit = (): void => {
+    const exit = ctx.appExit
+    if (exit !== undefined) {
+      exit(0)
+      return
+    }
+    process.stderr.write(`${name}: appExit unavailable, falling back to SIGTERM\n`)
+    process.kill(process.pid, 'SIGTERM')
+  }
+
+  const whisperIntervalSec = (): number => {
+    const merged = readAllConfig(paths)
+    const main = merged.main as Record<string, unknown> | undefined
+    const ers = main?.eventsRefreshSec as Record<string, unknown> | undefined
+    const v = Number(ers?.whisper)
+    return Number.isFinite(v) && v > 0 ? v : 3600
+  }
+
+  const serveWhisper = async (petId: string, force: boolean, res: ServerResponse): Promise<void> => {
+    const now = Date.now()
+    const intervalMs = whisperIntervalSec() * 1000
+    const cached = whisperCache.get(petId)
+    if (!force && cached !== undefined && now - cached.ts < intervalMs) {
+      sendJson(res, 200, { ok: true, text: cached.text, ts: cached.ts })
+      return
+    }
+    const merged = readAllConfig(paths)
+    const entry = flattenPetList(merged).find(p => String(p.id) === petId)
+    const result = await generateWhisper(ctx, getModelOverride(), petWhisperPrompt(entry, petId))
+    if (!result.ok) {
+      sendJson(res, 200, { ok: false, reason: result.reason, message: result.message })
+      return
+    }
+    whisperCache.set(petId, { text: result.text, ts: now })
+    sendJson(res, 200, { ok: true, text: result.text, ts: now })
+  }
+
+  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const url = new URL(req.url ?? '/', 'http://127.0.0.1')
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, CORS)
+      res.end()
+      return
+    }
+    if (!url.pathname.startsWith(ROUTE_PREFIX)) {
+      sendText(res, 404, 'dsh-pet: not found')
+      return
+    }
+    const rest = url.pathname.slice(ROUTE_PREFIX.length).replace(/^\/+/, '')
+    const petId = url.searchParams.get('pet') ?? 'main'
+
+    if (rest === 'config' && req.method === 'GET') {
+      sendJson(res, 200, readAllConfig(paths))
+      return
+    }
+    if (rest === 'config/meta' && req.method === 'GET') {
+      sendJson(res, 200, { ...paths, assetsRoot, userAnimRoot })
+      return
+    }
+    if (rest === 'config.jsonc' && req.method === 'GET') {
+      await sendFile(res, paths.defaultFile, MIME['.jsonc']!)
+      return
+    }
+    if (rest === 'whisper' && req.method === 'GET') {
+      await serveWhisper(petId, false, res)
+      return
+    }
+    if (rest === 'whisper/trigger' && req.method === 'GET') {
+      await serveWhisper(petId, true, res)
+      return
+    }
+    if (rest === 'approval/pending' && req.method === 'GET') {
+      const pending = [...pendingApprovals.values()]
+        .filter(p => p.petId === petId)
+        .map(p => ({ id: p.id, toolName: p.toolName, reason: p.reason }))
+      sendJson(res, 200, { ok: true, pending }, { 'cache-control': 'no-store' })
+      return
+    }
+    if (rest === 'approval/decide' && req.method === 'POST') {
+      const raw = await readBody(req)
+      let id = ''
+      let outcome = ''
+      try {
+        const body = JSON.parse(raw) as { id?: unknown; outcome?: unknown }
+        id = String(body.id ?? '')
+        outcome = String(body.outcome ?? '')
+      } catch { /* bad json */ }
+      if (outcome !== 'allowed-once' && outcome !== 'rejected') {
+        sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'outcome must be allowed-once|rejected' })
+        return
+      }
+      if (!settleApproval(id, outcome)) {
+        sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'unknown or settled approval id' })
+        return
+      }
+      process.stderr.write(`${name}: approval ${id} -> ${outcome} (pet bubble)\n`)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+    if (rest === 'settings' && req.method === 'GET') {
+      const saved = await readSettings()
+      const model = saved.model === undefined || saved.model === null
+        ? null
+        : { ...saved.model, hasApiKey: await petApiKeyConfigured(ctx) }
+      const plan = resolveAutostartPlan()
+      sendJson(res, 200, {
+        ok: true,
+        autostart: await autostartRead(),
+        // What the Run value currently holds (may differ from the plan after a
+        // move/upgrade) and what enabling would write — the tray/settings UI
+        // shows both so a stale registration is visible instead of silent.
+        autostartCommand: await autostartReadCommand() ?? null,
+        autostartMode: plan.mode,
+        autostartTarget: plan.detail ?? null,
+        autostartReason: plan.reason ?? null,
+        model,
+        // 未设置过就是气泡（默认形式，与渲染层缺省值一致）
+        chatForm: saved.chatForm === 'dialog' ? 'dialog' : 'bubble',
+        effective: getModelOverride() ?? null,
+      })
+      return
+    }
+    if (rest === 'settings' && req.method === 'PUT') {
+      const raw = await readBody(req)
+      let body: { autostart?: unknown; model?: unknown; chatForm?: unknown }
+      try {
+        body = JSON.parse(raw) as typeof body
+      } catch {
+        sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'invalid json' })
+        return
+      }
+      if (typeof body.autostart === 'boolean') {
+        try {
+          await autostartWrite(body.autostart)
+        } catch (error) {
+          sendJson(res, 200, { ok: false, reason: 'autostart-error', message: error instanceof Error ? error.message : String(error) })
+          return
+        }
+      }
+      // 对话形式：与自启一样是「独立小项」——单独保存、不碰模型配置，所以切换形式
+      // 不需要 API Key，也不会重建 Agent。
+      if (body.chatForm !== undefined) {
+        const form = body.chatForm
+        if (form !== 'bubble' && form !== 'dialog') {
+          sendJson(res, 200, { ok: false, reason: 'bad-request', message: '对话形式必须是 bubble / dialog' })
+          return
+        }
+        const current = await readSettings()
+        if (current.chatForm !== form) {
+          current.chatForm = form
+          await writeSettings(current)
+        }
+      }
+      if (body.model !== undefined) {
+        const saved = await readSettings()
+        if (body.model === null) {
+          // Clear: drop the provider route, the stored key, and the override.
+          try {
+            await clearPetModel(ctx)
+          } catch (error) {
+            sendJson(res, 200, { ok: false, reason: 'model-error', message: error instanceof Error ? error.message : String(error) })
+            return
+          }
+          saved.model = null
+          await writeSettings(saved)
+        } else {
+          const m = body.model as { apiKey?: unknown }
+          const validated = validatePetModelConfig(body.model)
+          if (!validated.ok) {
+            sendJson(res, 200, { ok: false, reason: 'bad-request', message: validated.message })
+            return
+          }
+          // OpenCode Go routes require a stable `x-opencode-session` header; the
+          // session id is generated once, reused across later saves, and persisted
+          // beside the config so it survives restarts.
+          const config = ensureOpenCodeSessionId(validated.config, saved.model?.sessionId)
+          // Empty key field = keep the stored one (first-time setup must supply it).
+          const apiKey = typeof m.apiKey === 'string' && m.apiKey.trim() !== '' ? m.apiKey.trim() : undefined
+          try {
+            await applyPetModel(ctx, config, apiKey)
+          } catch (error) {
+            sendJson(res, 200, { ok: false, reason: 'model-error', message: error instanceof Error ? error.message : String(error) })
+            return
+          }
+          saved.model = config
+          await writeSettings(saved)
+        }
+      }
+      sendJson(res, 200, { ok: true })
+      return
+    }
+    // Tray 「退出」: answer first, then ask the launcher for a bounded exit so
+    // the response is not cut off by our own teardown.
+    if (rest === 'quit' && req.method === 'POST') {
+      sendJson(res, 200, { ok: true })
+      setTimeout(() => { requestQuit() }, 120)
+      return
+    }
+    if (rest === 'work-status' && req.method === 'GET') {
+      const hit = workStatusCache.get(petId)
+      sendJson(res, 200, { ok: true, state: hit?.state ?? null, task: hit?.task ?? null, ts: hit?.ts ?? 0 }, { 'cache-control': 'no-store' })
+      return
+    }
+    if (rest === 'broadcast' && req.method === 'GET') {
+      const hit = broadcastCache.get(petId)
+      sendJson(res, 200, { ok: true, text: hit?.text ?? '', ts: hit?.ts ?? 0 }, { 'cache-control': 'no-store' })
+      return
+    }
+    if (rest === 'chat' && req.method === 'GET') {
+      // Transcript replay for the chat panel (memory-only, see chatTranscripts).
+      sendJson(res, 200, { ok: true, messages: chatTranscripts.get(petId) ?? [] })
+      return
+    }
+    if (rest === 'chat' && req.method === 'POST') {
+      const raw = await readBody(req)
+      let text = ''
+      try { text = String((JSON.parse(raw) as { text?: unknown }).text ?? '').trim() } catch { /* bad json */ }
+      if (text === '') {
+        sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'empty text' })
+        return
+      }
+      streamAcc.delete(petId) // new turn: restart the streaming bubble from empty
+      await bridgePetEvents(petId)
+      pushTranscript(petId, { role: 'user', text, ts: Date.now() })
+      const result = await chatWithAgent(ctx, petId, text)
+      if (result.ok) pushTranscript(petId, { role: 'pet', text: result.reply, ts: result.ts })
+      sendJson(res, 200, result)
+      return
+    }
+    // Streaming chat turn: one NDJSON frame per line, flushed as the turn runs
+    // (PetChatFrame in agent-chat.ts). The panel renders `delta` frames by
+    // replacement, pops `tool`/`status` frames as transient status lines, and
+    // treats `final`/`error` as terminal. Closing the connection cancels the turn.
+    if (rest === 'chat/stream' && req.method === 'POST') {
+      const raw = await readBody(req)
+      let text = ''
+      try { text = String((JSON.parse(raw) as { text?: unknown }).text ?? '').trim() } catch { /* bad json */ }
+      if (text === '') {
+        sendJson(res, 200, { ok: false, reason: 'bad-request', message: 'empty text' })
+        return
+      }
+      streamAcc.delete(petId) // new turn: restart the streaming bubble from empty
+      await bridgePetEvents(petId)
+      res.writeHead(200, {
+        'content-type': 'application/x-ndjson; charset=utf-8',
+        'cache-control': 'no-store',
+        connection: 'keep-alive',
+        ...CORS,
+      })
+      // Flush every frame separately: NDJSON over a chunked response, no buffering.
+      const emit = (frame: unknown): void => {
+        if (res.writableEnded || res.destroyed) return
+        res.write(JSON.stringify(frame) + '\n')
+      }
+      const controller = new AbortController()
+      res.on('close', () => {
+        if (!res.writableEnded) controller.abort()
+      })
+      pushTranscript(petId, { role: 'user', text, ts: Date.now() })
+      const outcome = await streamPetTurn(ctx, petId, text, emit, controller.signal)
+      if (outcome.reply !== '') pushTranscript(petId, { role: 'pet', text: outcome.reply, ts: outcome.ts })
+      if (!res.writableEnded && !res.destroyed) res.end()
+      return
+    }
+    // 「停止」: cancel the pet's in-flight turn (same effect as closing the stream).
+    if (rest === 'chat/cancel' && req.method === 'POST') {
+      sendJson(res, 200, { ok: true, cancelled: cancelPetTurn(petId) })
+      return
+    }
+    if (rest.startsWith('thumb/') && req.method === 'GET') {
+      const parts = rest.slice('thumb/'.length).split('/').map(decodeURIComponent)
+      if (parts.length !== 2 || !parts[1]!.endsWith('.webm')) {
+        sendText(res, 400, 'dsh-pet: expected /dsh-pet-7340/thumb/<root>/<name>.webm')
+        return
+      }
+      const [root, file] = parts as [string, string]
+      // Main pet: user animations shadow the packaged pool; pet packs read only
+      // their own directory (never the main pool).
+      const candidates = root === 'main'
+        ? [resolveExisting(userAnimRoot, file), resolveExisting(join(assetsRoot, 'webm'), file)]
+        : [resolveExisting(join(paths.petDir, `${root}-animation`), file)]
+      const found = candidates.find((c): c is string => c !== undefined)
+      if (found === undefined) {
+        sendText(res, 404, 'dsh-pet: asset not found')
+        return
+      }
+      await sendFile(res, found, MIME['.webm']!)
+      return
+    }
+    if (rest.startsWith('font/') && req.method === 'GET') {
+      const file = resolveExisting(join(assetsRoot, 'fonts'), decodeURIComponent(rest.slice('font/'.length)))
+      if (file === undefined) { sendText(res, 404, 'dsh-pet: not found'); return }
+      const ext = file.slice(file.lastIndexOf('.'))
+      await sendFile(res, file, MIME[ext] ?? 'application/octet-stream')
+      return
+    }
+    if (rest.startsWith('pic/') && req.method === 'GET') {
+      const file = resolveExisting(join(assetsRoot, 'pic'), decodeURIComponent(rest.slice('pic/'.length)))
+      if (file === undefined) { sendText(res, 404, 'dsh-pet: not found'); return }
+      await sendFile(res, file, MIME['.png']!)
+      return
+    }
+    sendText(res, 404, 'dsh-pet: not found')
+  }
+
+  const server: Server = createServer((req, res) => {
+    handle(req, res).catch((error: unknown) => {
+      if (!res.headersSent) sendText(res, 500, `dsh-pet: ${error instanceof Error ? error.message : String(error)}`)
+      else res.destroy()
+    })
+  })
+
+  const helperDir = join(APP_ROOT, 'runtime', 'electron-helper')
+  let child: ReturnType<typeof spawnPetElectron> | undefined
+  let electronStarted = false
+
+  // Port-in-use resilience: a second instance (autostart + manual, or kernel +
+  // standalone side by side) falls back to a random port instead of dying.
+  server.on('error', (error) => {
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE' && config.port !== 0) {
+      process.stderr.write(`${name}: port ${String(config.port)} in use, falling back to a random port\n`)
+      server.listen(0, '127.0.0.1')
+      return
+    }
+    process.stderr.write(`${name}: server error: ${error.message}\n`)
+  })
+
+  server.on('listening', () => {
+    const address = server.address()
+    const port = typeof address === 'object' && address !== null ? address.port : config.port
+    process.stderr.write(`${name}: pet server on http://127.0.0.1:${String(port)}${ROUTE_PREFIX}\n`)
+
+    if (electronStarted) return
+    electronStarted = true
+    if (!config.electron || process.env.DSH_PET_NO_ELECTRON === '1') return
+    const pets = desktopPets(readAllConfig(paths))
+    if (pets.length === 0) {
+      process.stderr.write(`${name}: no desktop-visible pets (display desktop/both), Electron not started\n`)
+      return
+    }
+    const exe = resolveElectronExe(APP_ROOT)
+    if (exe === undefined) {
+      process.stderr.write(`${name}: Electron not installed (devDependency); desktop window skipped, HTTP routes live\n`)
+      return
+    }
+    const smokeOut = process.env.DSH_PET_SMOKE_OUT
+    child = spawnPetElectron({
+      exe,
+      helperDir,
+      configUrl: `http://127.0.0.1:${String(port)}${ROUTE_PREFIX}/config`,
+      pets,
+      ...(smokeOut !== undefined && smokeOut !== ''
+        ? { smoke: { out: smokeOut, ...(process.env.DSH_PET_SMOKE_AFTER_MS !== undefined ? { afterMs: Number(process.env.DSH_PET_SMOKE_AFTER_MS) } : {}) } }
+        : {}),
+    })
+    child.on('error', (error) => { process.stderr.write(`${name}: electron spawn failed: ${error.message}\n`) })
+    child.on('exit', (code) => { process.stderr.write(`${name}: desktop helper exited (${String(code)})\n`) })
+    process.stderr.write(`${name}: desktop helper started for ${String(pets.length)} pet(s): ${pets.map(p => p.id).join(', ')}\n`)
+  })
+  server.listen(config.port, '127.0.0.1')
+
+  ctx.effect(function* () {
+    yield () => {
+      child?.kill()
+      server.close()
+    }
+  })
+}

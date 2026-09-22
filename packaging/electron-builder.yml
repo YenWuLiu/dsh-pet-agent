@@ -1,0 +1,35 @@
+# electron-builder 配置（配合 scripts/pack-exe.ps1 使用）
+# app 目录是组装好的 staging：launcher + lib + 生产 node_modules + assets + runtime + node.exe
+appId: com.yenwuliu.dsh-pet-agent
+productName: DSH-PET-AGENT
+copyright: MIT
+directories:
+  app: packaging/staging
+  output: dist
+# 内核是独立 Node 子进程（不经 Electron 的 asar 感知 fs），全部文件必须明文落盘
+asar: false
+# 与仓库锁定版本一致（staging 不含 electron 依赖，无法自动探测）
+electronVersion: 33.4.11
+npmRebuild: false
+win:
+  # 应用图标：由 scripts/make-tray-icon.py 从角色表情派生（packaging/app.ico）
+  icon: packaging/app.ico
+  target:
+    # nsis：按用户安装到 %LOCALAPPDATA%\Programs（有卸载项、开始菜单/桌面快捷方式）
+    #
+    # 只出安装版（2026-09 决定）：portable 每次启动要把 261MB 解包到 %TEMP%，实测冷启动
+    # ~3 分钟，拿来「开机自启」体验很差；装到固定目录的 nsis 版冷启动 ~2.3 秒。
+    # 免解包直跑的目录形态仍有 dist/win-unpacked/（同一份内容，脚本会写进 SHA256SUMS.txt）。
+    - nsis
+nsis:
+  # 非一键安装：让用户能选目录（否则默认装到 %LOCALAPPDATA% 且无法改）
+  oneClick: false
+  # 按用户安装：不需要管理员权限，HKCU 的 Run 键自启才成立
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DSH-PET-AGENT
+  # 卸载时保留 ~/.dsh（会话记忆、模型配置、API Key 凭据）——重装不该丢记忆
+  deleteAppDataOnUninstall: false
+  artifactName: ${productName}-${version}-setup.${ext}
