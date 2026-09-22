@@ -29,6 +29,11 @@ from pathlib import Path
 
 import numpy as np
 
+try:                      # scipy 只用于加速最大连通块量测（缺失时回落到纯 numpy 实现）
+    from scipy import ndimage
+except Exception:         # pragma: no cover
+    ndimage = None
+
 ROOT = Path(__file__).resolve().parent.parent
 FFMPEG = ROOT / 'tools' / 'ffmpeg.exe'
 
@@ -103,7 +108,20 @@ def even(v):
 def largest_blob_bbox(mask):
     """最大连通块 bbox (半开区间 x0,y0,x1,y1)；无可见像素返回 None。
 
-    只认最大块 = 角色本体，弃掉即梦"AI生成"水印等独立小块（它们会把脚底/高度量错）。"""
+    只认最大块 = 角色本体，弃掉即梦"AI生成"水印等独立小块（它们会把脚底/高度量错）。
+
+    实现说明：优先用 scipy.ndimage.label（4 连通，与下面 BFS 同语义）——纯 Python 的
+    逐像素 BFS 每帧要 0.5~1s，302 帧的片子单是量测就要几分钟，15 条就得跑一小时；
+    ndimage 把同样的量测压到毫秒级。没有 scipy 时自动回落到 BFS，结果一致。"""
+    if ndimage is not None:
+        lab, n = ndimage.label(mask)
+        if n == 0:
+            return None
+        sizes = np.bincount(lab.ravel())
+        sizes[0] = 0                       # 0 是背景标签，不参与竞争
+        keep = int(np.argmax(sizes))
+        sl = ndimage.find_objects(lab, max_label=keep)[keep - 1]
+        return (int(sl[1].start), int(sl[0].start), int(sl[1].stop), int(sl[0].stop))
     ys, xs = np.where(mask)
     if len(xs) == 0:
         return None
