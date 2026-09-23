@@ -19,7 +19,7 @@
 
 | 内容 | 状态 | 授权 |
 |---|---|---|
-| `assets/webm/` | 本项目自制动画（**现有 29 条**，逐条出片） | 自制，随代码 MIT |
+| `assets/webm/` | 本项目自制动画（**现有 38 条**，逐条出片） | 自制，随代码 MIT |
 | `assets/fonts/上首软糖体.ttf` | 本项目自带界面字体 **站酷快乐体 2016**（HappyZcool-2016）；文件名是渲染端硬编码的槽位名，不代表字体身份 | 版权方条款（内嵌声明 © LuiBingKe 2016） |
 | `assets/pic/` | 手套拖拽光标 ×2 + 通知表情图标 ×6，**目前仍沿用上游素材包** | 上游条款：允许开源使用，**禁止商用** |
 | `assets/config.jsonc` | 由上游动画池配置改写，动画名换成本项目清单 | 随代码 MIT |
@@ -37,6 +37,11 @@
 `assets/config.jsonc` **只引用这 38 条**，`scripts/check-assets.ps1` **三项全绿**：
 配置共引用 38 个动画、0 个缺文件、全部 640×360 带 alpha，锚点契约 37 条全部达标
 （最大偏差 3px，容差 ±8px）。上一版那 92 个"待出片槽位名"已按「以新素材为准」整体放弃。
+
+> **要跑这条管线，先装 ffmpeg**：`.\scripts\get-ffmpeg.ps1`。它是管线硬依赖
+> （`normalize-webm.py` / `check-assets.ps1` / `check-anchor.py` 都调它），但单个文件
+> 100~212 MB，**不进版本管理** —— 新克隆的仓库没有它，不装就跑不了出片。详见
+> [`tools/README.md`](tools/README.md)。
 
 > ⚠ **一条踩过的坑（2026-09-23）**：早期出片脚本里带 `colorkey=0x00FF00:0.1:0.1`（绿幕键），
 > 而母版是**手扣好、自带 alpha** 的 MOV。`colorkey` 只按 RGB 工作，会**丢弃输入 alpha、
@@ -200,13 +205,21 @@ DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
 
 | 路径 | 作用 |
 |---|---|
-| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源） |
+| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。规格契约与授权见 [`assets/README.md`](assets/README.md) |
 | `runtime/electron-helper/` | Electron 桌宠壳（透明窗、渲染、菜单、托盘）；其中 `shared-core.js` 是 **构建产物** |
-| `shell/` | 外壳纯逻辑层源码：`shared/`（上游 dsh-pet v0.2.11 逐字节副本）+ `ours/`（本项目覆盖）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js` |
+| `shell/` | 外壳纯逻辑层源码：`shared/`（上游 dsh-pet v0.2.11 逐字节副本）+ `ours/`（本项目覆盖）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js`。详见 [`shell/README.md`](shell/README.md) |
 | `src/` | host 侧 TS：`bin.ts`（内核组合入口）、`server.ts`（HTTP 路由）、`computer-use.ts`、`model-config.ts`、`autostart.ts`、`vendor/` |
+| `scripts/` | **15 个脚本**：素材管线 5 + 外壳验收闸 9 + 打包 1。清单、作用、何时跑见 [`scripts/README.md`](scripts/README.md) |
+| `docs/` | 动画提示词模板、引擎衔接规范；**文档总入口是 [`docs/README.md`](docs/README.md)** |
+| `packaging/` | `electron-builder.yml`、`launcher.cjs`（打包版启动器）、`app.ico`；`staging*/` 是组装中间产物，可随时清（`打包.bat clean`） |
+| `tools/` | `ffmpeg.exe`（**不进版本管理**，用 `scripts/get-ffmpeg.ps1` 装）+ `chat-smoke/` 面板自检。见 [`tools/README.md`](tools/README.md) |
+| `licenses/` | 上游 dsh-pet 与 DeepSeek Harness 的许可证全文 |
+| `patches/` | pnpm `patchedDependencies`（node-pty 补丁） |
 | `lib/` | `pnpm build` 的产物（`cordis.patch.prod.yml` 指向这里） |
-| `scripts/` | 素材与打包脚本：`normalize-webm.py`（MOV 母版 → 640×360 VP9-Alpha）、`check-assets.ps1`（校验配置↔素材齐备 + 规格 + 锚点契约）、`make-tray-icon.py`（从 `assets/pic/` 派生托盘/应用图标）、`pack-exe.ps1` 等 |
-| `tools/chat-smoke/` | 对话面板自检（无头 55 项断言 + 真窗口驱动） |
+| `dist/` | `scripts/pack-exe.ps1` 的产物：安装版 exe + `win-unpacked/` |
+
+> 素材生产（提示词 → 抠像 → 归一化 → 验收 → 上机）的完整链路画在
+> [`docs/README.md`](docs/README.md) 里。
 
 ## 许可证
 

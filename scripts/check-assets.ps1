@@ -63,7 +63,7 @@ $ffmpegCmd = Get-Command ffmpeg -ErrorAction SilentlyContinue
 if ($ffmpegCmd) { $ffmpegPath = $ffmpegCmd.Source }
 elseif (Test-Path (Join-Path $root 'tools\ffmpeg.exe')) { $ffmpegPath = Join-Path $root 'tools\ffmpeg.exe' }
 $canProbe = [bool]$ffmpegPath
-if (-not $canProbe) { Write-Host '（无 ffmpeg，跳过规格检查，只核对存在性）' }
+if (-not $canProbe) { Write-Host '（无 ffmpeg，跳过规格检查，只核对存在性 —— 装上它：.\scripts\get-ffmpeg.ps1）' }
 
 function Probe-Video([string]$p) {
   # 分辨率：ffmpeg -i 的信息走 stderr 且必然 exit 1（没给输出文件）；

@@ -15,9 +15,15 @@
 
 .EXAMPLE
   .\scripts\pack-exe.ps1
+  .\scripts\pack-exe.ps1 -Clean     打包成功后删掉中间产物（staging 约 300 MB）
 #>
 [CmdletBinding()]
-param()
+param(
+  # 打包成功后删掉 packaging\staging 与 packaging\staging-install。
+  # 它们是组装中间产物（约 300 MB），可随时由本脚本重建；留着只是为了排查
+  # 「产物里的文件为什么和 staging 不一样」这类问题。
+  [switch]$Clean
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -219,3 +225,17 @@ if ($unpackedExe.Count -gt 0) {
 Set-Content -Encoding UTF8 (Join-Path $dist 'SHA256SUMS.txt') $lines
 Write-Host ''
 Write-Host "产物：$($exes.Count) 个安装版 exe + dist\win-unpacked\（免解包直跑）"
+
+# --- 5. 可选：清中间产物 ---
+if ($Clean) {
+  Write-Host ''
+  Write-Host '==> 清理中间产物（-Clean）'
+  foreach ($d in $staging, $install) {
+    if (-not (Test-Path $d)) { continue }
+    $mb = [math]::Round(((Get-ChildItem $d -Recurse -File -ErrorAction SilentlyContinue |
+      Measure-Object Length -Sum).Sum / 1MB))
+    Remove-Item $d -Recurse -Force
+    Write-Host "  已删 $d（${mb} MB）"
+  }
+  Write-Host '  需要时重跑本脚本即可重建（pnpm build + hoisted 安装）。'
+}
