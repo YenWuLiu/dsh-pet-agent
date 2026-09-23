@@ -1,11 +1,19 @@
 # 通用 AI 视频 → 桌宠 640×360 VP9-Alpha 透明 webm 转换器
-# 专为「白底/浅底/纯绿底」AI 生成片设计：colorkey 会吃白围裙，改用逐帧边界洪水填充抠背景。
+# 专为「白底/浅底/纯绿底/纯黑底」AI 生成片设计：colorkey 会吃白围裙，改用逐帧边界洪水填充抠背景。
 # 管线：ffmpeg 解帧 → 每帧角点取样背景色 → 边界连通背景去除（ndimage.label）
-#       → 腐蚀 1px 去白边 → 只保留最大连通域（去 AI生成 水印/Zzz/杂点）
+#       → 腐蚀去边 → 保留连通域（默认只留最大块；--keep-min-blob 可连气泡/道具一起留）
 #       → alpha 羽化 0.6 → （绿底时）边缘去绿 → 全片统一裁剪窗+缩放+锚定 → VP9-Alpha 编码
 # 用法：
 #   python scripts/key-video.py <src.mp4> <dst.webm> [--anchor frame0|bottom|center]
 #         [--target-h 0.75] [--scale 1.0] [--thresh 26] [--bitrate 1M] [--keep-png 目录]
+#         [--keep-min-blob 80]
+#
+# --keep-min-blob（2026-09-23 新增）：默认 0 = **只保留最大连通域**，用于甩掉即梦的
+#   「AI生成」水印与飘点。但有些片**故意带独立的道具/特效**——思考气泡、掉在地上的手柄、
+#   鲸鱼虚影、星星碎屑——它们与角色不连通，按默认规则会被整块抹掉（实测 深度思考碎碎念
+#   的两三个对话气泡各约 13.6k px、玩游戏气急败坏的手柄约 5.3k px，都会被吃掉）。
+#   传 N>0 时改为**保留所有面积 ≥ N 的连通域**（最大块永远保留），碎点仍丢。
+#   注意：**锚点与缩放只认最大块（角色本体）**，气泡/道具只影响裁剪窗，不会把角色缩小。
 #
 # 锚定（--anchor）：
 #   frame0（默认，引擎契约）＝ 首帧（契约要求的中立站姿）角色高 → target_h×360，
@@ -47,6 +55,9 @@ ap.add_argument('--bitrate', default='1M')
 ap.add_argument('--keep-png', default='', help='调试用：保留抠好的 RGBA 帧序列到该目录')
 ap.add_argument('--workdir', default='', help='中间产物目录（默认系统临时目录；受限/沙箱环境请指定工作区内的已存在目录）')
 ap.add_argument('--erode', type=int, default=2, help='alpha 腐蚀像素数（吃绿边，默认 2）')
+ap.add_argument('--keep-min-blob', type=int, default=0,
+                help='保留所有面积 ≥ N 的连通域（默认 0 = 只留最大块）。片里有独立气泡/道具/特效时传，'
+                     '如 80；角色本体（最大块）永远保留，且锚点/缩放只认它')
 ap.add_argument('--two-pass', action='store_true',
                 help='两段背景（剪映导出：灰画布边 + 内嵌黑面板，面板不贴边第一炮洪水够不着）：'
                      '先按角点色洪水去灰边，再对露出的纯黑(<=8)面板二次洪水。黑底片有灰边时用')
@@ -82,7 +93,8 @@ print(f'{SRC.name}: {len(files)} 帧 @ {fps:g}fps')
 
 # ---- 2. 逐帧抠像 ----
 keyed = []   # (rgba_uint8 HxWx4)
-bboxes = []
+bboxes = []      # 每帧「全部保留内容」的 bbox —— 决定裁剪窗（保证气泡/道具不被切掉）
+main_boxes = []  # 每帧「角色本体（最大块）」的 bbox —— 决定缩放与锚点
 for i, fp in enumerate(files):
     a = np.asarray(Image.open(fp).convert('RGB')).astype(np.int16)
     h, w, _ = a.shape
@@ -120,10 +132,14 @@ for i, fp in enumerate(files):
     lab2, n2 = ndimage.label(alpha > 0)
     if n2 == 0:
         raise SystemExit(f'第 {i} 帧抠空了——阈值 {args.thresh} 太大或背景取样异常（bg={bg}）')
-    if n2 > 1:
-        sizes = ndimage.sum(alpha > 0, lab2, range(1, n2 + 1))
-        keep = int(np.argmax(sizes)) + 1
-        alpha = np.where(lab2 == keep, 255, 0).astype(np.uint8)
+    sizes = ndimage.sum(alpha > 0, lab2, range(1, n2 + 1))
+    main = int(np.argmax(sizes)) + 1          # 最大块 = 角色本体
+    if args.keep_min_blob > 0:
+        # 保留所有 ≥ N 的块（气泡/道具/特效），碎点照丢；最大块永远留
+        keep = [k + 1 for k in range(n2) if sizes[k] >= args.keep_min_blob or k + 1 == main]
+        alpha = np.where(np.isin(lab2, keep), 255, 0).astype(np.uint8)
+    elif n2 > 1:
+        alpha = np.where(lab2 == main, 255, 0).astype(np.uint8)
 
     # 封闭绿腔清除：角色轮廓围住的孔洞里，凡绿占优像素一律透明
     # （发绺缝隙/耳褶/尾鳍弯里的阴影绿，边界洪水够不着、阈值也认不出，但 g 占优是铁证；
@@ -151,6 +167,18 @@ for i, fp in enumerate(files):
     keyed.append(rgba)
     ys, xs = np.where(alpha_f > 40)
     bboxes.append((xs.min(), ys.min(), xs.max(), ys.max()))
+    # 角色本体 bbox：**锚点与缩放只认它**——飘在外面的气泡/道具若参与 ref_box，
+    # 首帧角色高会被量高、整片角色被缩小。口径必须与 bboxes 一致（羽化后的 alpha_f>40），
+    # 否则同一份素材重跑会得到不同的缩放（差 1~2px 就够让 anchor 契约漂移）。
+    # 羽化不会合并/拆散连通域，所以按"与最大块重叠最多"认领即可。
+    if args.keep_min_blob > 0:
+        lab3, n3 = ndimage.label(alpha_f > 40)
+        overlap = np.bincount(lab3[lab2 == main].ravel(), minlength=n3 + 1)
+        overlap[0] = 0
+        my, mx = np.where(lab3 == int(np.argmax(overlap)))
+        main_boxes.append((int(mx.min()), int(my.min()), int(mx.max()), int(my.max())))
+    else:
+        main_boxes.append(bboxes[-1])   # 默认路径只有一块，本体 == 全部内容
 
 # ---- 3. 全片统一裁剪窗（各帧 bbox 并集 + 3% 衬垫，裁切防抖）----
 x0 = min(b[0] for b in bboxes); y0 = min(b[1] for b in bboxes)
@@ -163,7 +191,8 @@ win_w, win_h = x1 - x0, y1 - y0
 
 # 参照帧 = 第 0 帧（契约要求的中立站姿）。bbox 为闭区间，这里换半开区间避免 ±1 误差：
 #   ref_h = 首帧角色高、ref_feet = 首帧脚底、ref_cx = 首帧水平中心（源像素坐标）
-ref_box = bboxes[0]
+# 用 main_boxes（角色本体）而不是 bboxes（含气泡/道具）：否则首帧角色高被量高、角色被缩小。
+ref_box = main_boxes[0]
 ref_x0, ref_y0 = ref_box[0], ref_box[1]
 ref_x1, ref_y1 = ref_box[2] + 1, ref_box[3] + 1
 ref_h, ref_feet, ref_cx = ref_y1 - ref_y0, float(ref_y1), (ref_x0 + ref_x1) / 2.0
@@ -190,6 +219,11 @@ else:
     out_w = max(2, int(win_w * s) // 2 * 2); out_h = max(2, int(win_h * s) // 2 * 2)
     px = CENTER_X - out_w // 2
     py = (CANVAS_H - BOTTOM_MARGIN - out_h) if args.anchor == 'bottom' else ((CANVAS_H - out_h) // 2)
+if args.keep_min_blob > 0:
+    _mx0 = min(b[0] for b in main_boxes); _my0 = min(b[1] for b in main_boxes)
+    _mx1 = max(b[2] for b in main_boxes); _my1 = max(b[3] for b in main_boxes)
+    print(f'--keep-min-blob {args.keep_min_blob}：保留独立气泡/道具/特效；'
+          f'角色本体 union = {_mx1 - _mx0}×{_my1 - _my0}px（锚点与缩放只按它算）')
 print(f'裁剪窗 {win_w}×{win_h} -> {out_w}×{out_h}（缩放 {s:.3f}，锚定 {args.anchor} @({px},{py})）')
 if args.anchor == 'frame0':
     print(f'  首帧角色高 {ref_h}px → {ref_h * s:.1f}px（目标 {CANVAS_H * args.target_h:.0f}），'
