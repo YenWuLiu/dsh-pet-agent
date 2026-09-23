@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  打包 DSH-PET 为安装版 exe（electron-builder，nsis 目标）。
+  打包 DSH-PET-AGENT 为安装版 exe（electron-builder，nsis 目标）。
 
 .DESCRIPTION
   流程：

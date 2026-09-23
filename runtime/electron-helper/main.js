@@ -412,7 +412,7 @@ function refreshTrayMenu() {
     { label: '退出桌宠', click: () => { void quitPet(); } },
   ]);
   trayMenu = menu;
-  tray.setToolTip('蓝毛小女仆 · DSH-PET');
+  tray.setToolTip('蓝毛小女仆 · DSH-PET-AGENT');
 }
 
 /** 建托盘：图标拿不到就静默跳过（无托盘的桌宠仍然能用，只是少一个入口） */

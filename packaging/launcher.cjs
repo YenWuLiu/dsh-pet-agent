@@ -1,4 +1,4 @@
-// DSH-PET 打包版启动器（electron-builder 安装版 / win-unpacked 的 Electron 主进程）。
+// DSH-PET-AGENT 打包版启动器（electron-builder 安装版 / win-unpacked 的 Electron 主进程）。
 //
 // Electron 二进制一鱼三吃，所以本文件必须按 argv 分派两种角色：
 //
