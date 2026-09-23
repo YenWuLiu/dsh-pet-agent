@@ -42,15 +42,14 @@
    ```
    统一到 640×360、首帧角色高 270 / 脚底 y=330 / 中心 x=320。
    > **母版 MOV 是唯一正确来源**：它自带 alpha，且少一代有损编码。
-   > ⚠ **绝不要拿 `mov\output\` 里那批 webm 当来源** —— 它们是
-   > `mov\convert-mov-to-webm.bat` 转的，而那个 bat 原本带的
+   > ⚠ **手扣好的 MOV 永远不要再 key 一次** —— 早期出片脚本里带的
    > `colorkey=0x00FF00:0.1:0.1` 会**把 alpha 整个丢掉**（2026-09-23 实测事故）：
    > `colorkey` 只按 RGB 工作（ffmpeg 原文 *"Turns a certain color into transparency.
    > Operates on RGB colors."*），它会**丢弃输入 alpha、按 RGB 重新生成一张**；键色
    > `#00FF00` 是给绿幕片用的，而这些母版的背景是**透明黑**（RGB 0,0,0），匹配不到任何
    > 像素 → 新 alpha 全是 255 → 成片完全不透明（容器还照旧带 `alpha_mode:1`，很难发现）。
    > 实测同一份母版首帧透明占比：**加 colorkey 后 0.8196 → 0.0000**，不加则保持 0.8196。
-   > 该 bat 已修（去掉 colorkey、补 `-an`），详见 bat 内注释。
+   > 只有**绿幕片**才需要先 chromakey 再编码。
 4. **接进配置**：把动画名写进 `assets/config.jsonc` 的对应槽位；
 5. **验收**：`.\scripts\check-assets.ps1`（齐备 + 规格 + 锚点契约三项，缺一即失败）。
 

@@ -8,20 +8,20 @@
 // 配置里出现的每个名字都有对应 webm 文件。上一版配置里那 92 个"待出片槽位名"已放弃。
 //   正确流程（2026-09-23 定案）：
 //     python scripts/normalize-webm.py <MOV目录> assets/webm --anchor 休闲待机
-//   ⚠ **别拿 mov\output\ 那批 webm 当来源**：它们是 convert-mov-to-webm.bat 转的，而那个 bat
-//     里的 `colorkey=0x00FF00:0.1:0.1` 会**把 alpha 整个丢掉**——colorkey 只按 RGB 工作
-//     （ffmpeg 原文 "Operates on RGB colors"），它会丢弃输入 alpha、按 RGB 重新生成一张；
-//     键色 #00FF00 在"透明黑底"上匹配不到任何像素，于是新 alpha 全是 255 → 成片完全不透明。
-//     实测同一份母版首帧透明占比：加 colorkey 后 0.8196 → 0.0000，不加则保持 0.8196。
-//     该 bat 已修（去掉 colorkey、补 -an 去掉音轨），详见 bat 内注释。
+//   ⚠ **手扣好的 MOV 永远不要再 key 一次**：早期脚本里的 `colorkey=0x00FF00:0.1:0.1`
+//     会**把 alpha 整个丢掉**——colorkey 只按 RGB 工作（ffmpeg 原文 "Operates on RGB
+//     colors"），它会丢弃输入 alpha、按 RGB 重新生成一张；键色 #00FF00 在"透明黑底"上
+//     匹配不到任何像素，于是新 alpha 全是 255 → 成片完全不透明（容器还照旧带
+//     alpha_mode:1，很难发现）。实测同一份母版首帧透明占比：加 colorkey 后
+//     0.8196 → 0.0000，不加则保持 0.8196。只有绿幕片才需要先 chromakey 再编码。
 //   → 验收：.\scripts\check-assets.ps1（配置↔素材齐备 + 640×360/alpha + 锚点契约）
 //
 // 引擎契约要点（改这个文件前务必遵守，否则渲染端会静默失败）：
 //   idle 必须非空；turn / drag / clicks 必须存在（可为空数组——空池都是安全的：转向档位
 //     落回小动作池、拖拽只走物理跟手不播专门动画、点按只做 Q 弹挤压反馈）；
 //   moves 必须有 default 对象和 actions 数组（actions 为空 → tryMove 返回 false，落回小动作池）；
-//   events 每个值都要是非空字符串数组，**段本身可以是空对象**（本项目三组事件动画都还没出片，
-//     所以写 {}）。注意：覆盖层（main-config.json / pet/<名>-config.json）若自己写 animations，
+//   events 每个值都要是非空字符串数组，**段本身可以是空对象**（本项目只出了 workStatus 一组，
+//     另两组没写键）。注意：覆盖层（main-config.json / pet/<名>-config.json）若自己写 animations，
 //     宿主校验仍要求 events.balance 非空（见 src/vendor/config.ts 的 animationsValid）；
 //   animationWeights 的 idle / turn / move 必须齐全；三者之和 <100 才有小动作池，
 //   且各分类 weight 合计 = 100 − idle − turn − move（当前 10 + 5 + 5 = 20，分类合计 80）。
@@ -222,8 +222,8 @@
 }
 
 // ===================== 素材清单（38 条，= assets/webm/*.webm 的全部） =====================
-// 母版：D:\dsh-pet-agent\mov\归档\mov\*.mov（24 条）+ mov\input\*.mov（14 条）——
-//   都是**手扣、自带 alpha 通道**的 HEVC MOV，直接用 normalize-webm.py 归一化。
+// 母版：D:\dsh-pet-agent\mov\归档\mov\*.mov（38 条，全部集中在此）——
+//   都是**手扣、自带 alpha 通道**的 MOV，直接用 normalize-webm.py 归一化。
 // 槽位分布：idle 1 · turn 1 · clicks 2 · moves 1 · 小动作 9 · 玩耍 15 · 吃什么 2 · 文字 1
 //   = 31 条，加 events.workStatus 6 条 = 37 个引用名（锚点自身去重后 check-assets 报 38）。
 // 上一版配置末尾那 92 个"待出片槽位名"（turn 东张西望 / clicks 5 条 / 小动作 14 / 玩耍 21 /
