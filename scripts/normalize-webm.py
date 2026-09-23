@@ -13,7 +13,8 @@
   2. 每个片按 s = 目标角色高 / 该片首帧角色高 缩放 —— 等价于把每个动画的首帧
      对齐到锚点首帧（锚点只提供"标准角色高 = 0.75 × 360 = 270px"这个约定）；
   3. 若装配不下（缩放后超出画布），自动下调缩放；
-  4. 裁剪窗 = 整片 union bbox + margin（保证动作不被切），再缩放；
+  4. 裁剪窗 = 整片**全部内容** bbox（含独立气泡/道具/特效）+ margin（保证不被切），再缩放；
+     缩放与锚点只用**最大连通块**（角色本体），避免气泡把角色顶小；
   5. 透明画布 640×360，首帧脚底贴 y=330（引擎 FEET_Y）、首帧水平中心贴 x=320；
   6. libvpx-vp9 / yuva420p / auto-alt-ref 0 / CRF 20 编码，保留 alpha。
 
@@ -68,17 +69,28 @@ def probe_size(path):
 
 
 def measure(path, w, h):
-    """流式解码整片，返回 (首帧 bbox, union bbox, 帧数)
+    """流式解码整片，返回 (首帧角色 bbox, 角色 union bbox, 全部内容 union bbox, 帧数)
 
-    只统计**最大不透明连通块**（= 角色本体）：即梦片带的"AI生成"水印是独立小块，
-    若按 alpha>thr 整体取 bbox，量到的是"头顶→水印底"，据此缩放会把角色压小、
-    脚底悬空（2026-09 实测事故）。"""
+    两套 bbox 分工（2026-09-23 修正）：
+
+    * **角色 bbox**（= 最大不透明连通块）：用于缩放与锚点。即梦片带的"AI生成"水印是
+      独立小块，若按 alpha>thr 整体取 bbox，量到的是"头顶→水印底"，据此缩放会把角色
+      压小、脚底悬空（2026-09 实测事故）。
+    * **全部内容 bbox**（= 所有 alpha>thr 像素）：用于**裁剪窗**。有些片故意带与角色
+      不连通的对话气泡 / 道具 / 特效（深度思考碎碎念 的三个中文气泡、玩游戏气急败坏
+      掉在地上的手柄、鲸鱼现世 的鲸鱼虚影），只按角色 bbox 裁会把它们切掉。
+
+    本批（带 alpha 的手扣 MOV）实测：深度思考碎碎念 的气泡恰好落在角色 union 内、
+    侥幸没被切，但那只是运气——所以这里显式分开，气泡/道具一律以"全部内容"为准。
+    """
     cmd = [str(FFMPEG), '-hide_banner', '-loglevel', 'error'] + in_decoder(path) + [
            '-i', str(path), '-f', 'rawvideo', '-pix_fmt', 'rgba', '-']
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10 ** 8)
     n = w * h * 4
     ux0 = uy0 = 10 ** 9
     ux1 = uy1 = -1
+    ax0 = ay0 = 10 ** 9
+    ax1 = ay1 = -1
     first = None
     frames = 0
     while True:
@@ -86,18 +98,25 @@ def measure(path, w, h):
         if len(buf) < n:
             break
         a = np.frombuffer(buf, dtype=np.uint8).reshape(h, w, 4)[..., 3]
-        b = largest_blob_bbox(a > ALPHA_THR)
+        mask = a > ALPHA_THR
+        b = largest_blob_bbox(mask)
         if b is not None:
             if first is None:
                 first = b
             ux0 = min(ux0, b[0]); uy0 = min(uy0, b[1])
             ux1 = max(ux1, b[2]); uy1 = max(uy1, b[3])
+        ys, xs = np.where(mask)
+        if len(xs):
+            ax0 = min(ax0, int(xs.min())); ay0 = min(ay0, int(ys.min()))
+            ax1 = max(ax1, int(xs.max()) + 1); ay1 = max(ay1, int(ys.max()) + 1)
         frames += 1
     proc.stdout.close()
     proc.wait()
     if first is None:
         raise SystemExit('整片无可见像素：%s' % path)
-    return first, (ux0, uy0, ux1, uy1), frames
+    if ax1 < 0:                       # 理论上不会发生（first 不为 None 即 mask 有像素）
+        ax0, ay0, ax1, ay1 = ux0, uy0, ux1, uy1
+    return first, (ux0, uy0, ux1, uy1), (ax0, ay0, ax1, ay1), frames
 
 
 def even(v):
@@ -155,17 +174,18 @@ def largest_blob_bbox(mask):
 def plan_clip(path, target_h, margin, anchor_h=None):
     """算出该片的 crop/scale/pad 参数"""
     w, h, fps = probe_size(path)
-    first, union, frames = measure(path, w, h)
+    first, union, union_all, frames = measure(path, w, h)
     fh = first[3] - first[1]                      # 首帧角色高
     scale = target_h / fh                         # 与锚点同尺寸
     cx = (first[0] + first[2]) / 2.0              # 首帧水平中心
     feet = float(first[3])                        # 首帧脚底
 
-    # 裁剪窗 = 整片动作范围 + margin（夹到画面内）
-    x0 = max(0, union[0] - margin)
-    y0 = max(0, union[1] - margin)
-    x1 = min(w, union[2] + margin)
-    y1 = min(h, union[3] + margin)
+    # 裁剪窗 = **全部内容**的动作范围 + margin（夹到画面内）——含独立气泡/道具，
+    # 用角色 union 会把它们切掉（见 measure 的说明）
+    x0 = max(0, union_all[0] - margin)
+    y0 = max(0, union_all[1] - margin)
+    x1 = min(w, union_all[2] + margin)
+    y1 = min(h, union_all[3] + margin)
     cw, ch = x1 - x0, y1 - y0
 
     # 装配不下就下调缩放
@@ -183,7 +203,8 @@ def plan_clip(path, target_h, margin, anchor_h=None):
         'w': w, 'h': h, 'fps': fps, 'frames': frames,
         'first_h': fh, 'scale': scale, 'crop': (even(cw), even(ch), even(x0), even(y0)),
         'scaled': (sw, sh), 'pad': (even(px), even(py)),
-        'union': union, 'first': first,
+        'union': union, 'union_all': union_all, 'first': first,
+        'detached': union != union_all,           # 片里是否有独立气泡/道具/特效
     }
 
 
@@ -222,14 +243,16 @@ def main():
     if args.anchor:
         print('锚点：%s（所有片首帧统一对齐到该标准尺寸/位置）' % args.anchor)
     print()
-    print('%-16s %-11s %-9s %-8s %-20s %-14s' % ('素材', '源画布', '首帧高', '缩放', '裁剪窗(w,h,x,y)', '缩放后+偏移'))
+    print('%-16s %-11s %-9s %-8s %-20s %-14s %s' % ('素材', '源画布', '首帧高', '缩放', '裁剪窗(w,h,x,y)', '缩放后+偏移', '备注'))
     plans = {}
     for f in files:
         p = plan_clip(f, target_h, args.margin)
         plans[f] = p
-        print('%-16s %-11s %-9d %-8.3f %-20s %-14s' % (
+        note = '含独立气泡/道具' if p['detached'] else ''
+        print('%-16s %-11s %-9d %-8.3f %-20s %-14s %s' % (
             f.stem, '%dx%d' % (p['w'], p['h']), p['first_h'], p['scale'],
-            '%d,%d,%d,%d' % p['crop'], '%dx%d+%d+%d' % (p['scaled'][0], p['scaled'][1], p['pad'][0], p['pad'][1])))
+            '%d,%d,%d,%d' % p['crop'], '%dx%d+%d+%d' % (p['scaled'][0], p['scaled'][1], p['pad'][0], p['pad'][1]),
+            note))
     if args.dry:
         print('\n（--dry：未写出文件）')
         return
