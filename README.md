@@ -205,7 +205,7 @@ DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
 | `shell/` | 外壳纯逻辑层源码：`shared/`（上游 dsh-pet v0.2.11 逐字节副本）+ `ours/`（本项目覆盖）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js` |
 | `src/` | host 侧 TS：`bin.ts`（内核组合入口）、`server.ts`（HTTP 路由）、`computer-use.ts`、`model-config.ts`、`autostart.ts`、`vendor/` |
 | `lib/` | `pnpm build` 的产物（`cordis.patch.prod.yml` 指向这里） |
-| `scripts/` | 素材与打包脚本：`check-assets.ps1`（校验配置↔素材齐备）、`make-tray-icon.py`（从 `assets/pic/` 派生托盘/应用图标）、`normalize-webm.py`、`key-video.py`、`pack-exe.ps1` 等 |
+| `scripts/` | 素材与打包脚本：`normalize-webm.py`（MOV 母版 → 640×360 VP9-Alpha）、`check-assets.ps1`（校验配置↔素材齐备 + 规格 + 锚点契约）、`make-tray-icon.py`（从 `assets/pic/` 派生托盘/应用图标）、`pack-exe.ps1` 等 |
 | `tools/chat-smoke/` | 对话面板自检（无头 55 项断言 + 真窗口驱动） |
 
 ## 许可证

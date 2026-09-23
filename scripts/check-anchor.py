@@ -3,8 +3,7 @@
 
 为什么需要它（2026-09 实测事故）：
   即梦出片在画面底部带"AI生成"水印，水印与角色是**两个**不透明连通块。凡是按
-  "不透明像素 bbox"量角色的工具（alpha>40 的 bbox、normalize-webm.py 的 measure、
-  tools/weld-seams.bbox_of），量到的都是"头顶→水印底"，于是：
+  "不透明像素 bbox"量角色的做法，量到的都是"头顶→水印底"，于是：
     ① 归一化把 头顶→水印 缩放成 270px → 角色本身只剩 ~206px（点击后整只变小）；
     ② 脚底被留在水印上方 ~62px → 角色悬空（离地不落地）。
   这类错误在按 alpha 的整体 bbox 里"看起来完全达标"（高度 271、脚底 330），
@@ -16,7 +15,7 @@
 
 用法：
   python scripts/check-anchor.py                                  # 默认 assets/config.jsonc + assets/webm
-  python scripts/check-anchor.py --webm-dir assets-custom/webm    # 验暂存区
+  python scripts/check-anchor.py --webm-dir <别的素材目录>          # 验别处的素材
   python scripts/check-anchor.py --skip 被鼠标拖拽悬空反馈         # 首帧非站姿的动画（拖拽=悬空）
 退出码：0 全部达标；1 有偏差/缺文件；2 环境缺依赖。
 """
@@ -30,7 +29,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CANVAS_W, CANVAS_H = 640, 360
-ALPHA_THR = 40          # 与管线同一口径（weld-seams.bbox_of / normalize-webm ALPHA_THR）
+ALPHA_THR = 40          # 与 normalize-webm.py 同一口径（ALPHA_THR）
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -208,9 +207,8 @@ def main():
         print(f'锚点契约不达标 {len(bad)} 项 ❌')
         for x in bad:
             print(f'  - {x}')
-        print('修法：用源片重转并按锚点归一化，例：'
-              f'\n  python scripts/key-video.py <src.mp4> <out.webm> --anchor frame0   # 引擎契约（默认）'
-              f'\n  python tools/adjust-webm.py <in.webm> <out.webm> --align-to <{anchor_name} 首帧.png>')
+        print('修法：拿 MOV 母版重跑归一化（锚点按首帧角色本体算）：'
+              f'\n  python scripts/normalize-webm.py <母版目录> assets/webm --anchor {anchor_name}')
         return 1
     print(f'锚点契约全部达标 ✅（{len(names) - len(skip) - 1} 个动画与 {anchor_name} 同高同脚底同中心）')
     return 0

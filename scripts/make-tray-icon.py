@@ -56,7 +56,7 @@ def main() -> int:
     src = Path(args.src)
     if not src.is_file():
         print(f'[X] 源图标不存在：{src}')
-        print('  先补齐 assets/pic/（见 docs/自制素材指南.md），或换 --src')
+        print('  先补齐 assets/pic/（见 assets/README.md），或换 --src')
         return 1
 
     tray_out = Path(args.out)
