@@ -6,7 +6,7 @@
 
 用法：
   python scripts/normalize-webm.py <源目录> <输出目录> [--anchor 待机呼吸] [--target-h 0.75]
-                                  [--margin 8] [--crf 20] [--dry]
+                                  [--margin 8] [--crf 15] [--dry]
 
 规则（与「对齐」工具同源）：
   1. 流式解码每个源片，量出「首帧角色 bbox」与「整片 union bbox」；
@@ -16,7 +16,9 @@
   4. 裁剪窗 = 整片**全部内容** bbox（含独立气泡/道具/特效）+ margin（保证不被切），再缩放；
      缩放与锚点只用**最大连通块**（角色本体），避免气泡把角色顶小；
   5. 透明画布 640×360，首帧脚底贴 y=330（引擎 FEET_Y）、首帧水平中心贴 x=320；
-  6. libvpx-vp9 / yuva420p / auto-alt-ref 0 / CRF 20 编码，保留 alpha。
+  6. libvpx-vp9 / yuva420p / auto-alt-ref 0 / CRF 15 编码，保留 alpha。
+     默认 CRF 2026-09-23 从 20 改到 15：实测在**实际显示尺寸**上 +1.19 dB（体积 +24%）。
+     再往下（CRF 12）只再 +1 dB 却再多 16% 体积，不划算；往上到 20 则明显发软。
 
 引擎常量对照（runtime/electron-helper/shared-core.js:6-15）：
   CANVAS_H=360、FEET_Y=330、HIT_BOX={200,50,440,335}、PET_REF_WIDTH=462
@@ -229,7 +231,7 @@ def main():
     ap.add_argument('--anchor', default='', help='锚点素材名（仅用于打印提示，规则本身按统一目标高）')
     ap.add_argument('--target-h', type=float, default=0.75, help='角色高占画布比例（默认 0.75 → 270px）')
     ap.add_argument('--margin', type=int, default=8)
-    ap.add_argument('--crf', type=int, default=20)
+    ap.add_argument('--crf', type=int, default=15)
     ap.add_argument('--dry', action='store_true')
     args = ap.parse_args()
 
