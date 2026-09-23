@@ -1304,13 +1304,18 @@ class PetSprite {
     e.preventDefault();
     this.stopThrow(); // 菜单弹出前停住飞行中的宠物
     this.stopMove(); // 菜单悬停期间宠物不漫游
-    // 桌面专属工具根项（对话 / 设置 / 碎碎念 / 回到初始位置 / 退出）
+    // 桌面专属工具根项（对话 / 设置 / [碎碎念] / 回到初始位置 / 退出；碎碎念为条件项）
     // + 共享菜单树（动作→分类→具体动画）
-    // 原「打开网站」与「查看余额」两项已按要求删除（宿主不再提供对应端点；余额档位动画仍可在「动作」里点播）。
+    // 原「打开网站」与「查看余额」两项已按要求删除（宿主不再提供对应端点）；6 条余额档位动画
+    // 还没出片，所以暂时也不在「动作」菜单里（名字见 assets/config.jsonc 末尾名单）。
+    // 「碎碎念」只在真有碎碎念动画（animations.events.whisper 非空）时出现：这一项会先请宿主
+    // **强制生成一句话**（真花额度），再抽 events.whisper 里的动画播 + 弹气泡；池子空时生成完
+    // 什么都播不出来（showWhisper 直接 return，只留一行 console.error），所以宁可不显示。
+    // 本项目 3 条碎碎念动画还没出片 → 现在不显示；出片并填进 config 后自动回来。
     const tools = [
       { label: '对话', action: 'chat' },
       { label: '设置', action: 'settings' },
-      { label: '碎碎念', action: 'whisper' },
+      ...(this.animations.events?.whisper?.length ? [{ label: '碎碎念', action: 'whisper' }] : []),
       { label: '回到初始位置', action: 'home' },
       { label: '退出桌宠', action: 'quit' },
     ];
