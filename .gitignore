@@ -5,10 +5,6 @@ lib/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
-# 自制素材的 AI 原始视频体积大且可重新生成，不进仓库
-assets-custom/raw/
-# 本地生成对比备份（大文件，可再生成）
-assets-custom/raw-local/
 # 本地工具链：只忽略体积大的二进制；脚本与自检必须进仓库
 # （tools/ 曾经整目录被忽略——结果连 tools/chat-smoke 的面板回归都没进版本管理）
 tools/*.exe
@@ -22,8 +18,6 @@ packaging/staging-install/
 
 # 本地验证/调研暂存（可再生）
 .smoke/
-# 精灵图验证实验的产出（scripts/make-sprite-sheet.py 可重跑；见 scripts/make-sprite-preview.py）
-.sprite-lab/
 # 冒烟脚本的产出与 Electron 用户目录缓存（每次跑都会重写）
 tools/**/out/
 .kernel-research/
