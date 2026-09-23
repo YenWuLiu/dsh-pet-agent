@@ -341,7 +341,7 @@ function hostBase() {
 
 /**
  * 托盘图标：优先本地 runtime/electron-helper/tray.png（由 scripts/make-tray-icon.py
- * 从 assets/pic 的角色表情派生，随 swap-assets.ps1 一起刷新），本地缺失再回退到
+ * 从 assets/pic 的角色表情派生，换角色后需重跑该脚本），本地缺失再回退到
  * 宿主 /pic/ 的角色图标。两条路都拿不到就返回 null——调用方跳过托盘而不是崩。
  */
 function localTrayIcon() {

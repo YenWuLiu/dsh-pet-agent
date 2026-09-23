@@ -1362,7 +1362,7 @@ var PetShared = (() => {
     "box-shadow:0 12px 36px rgba(0,0,0,.22);color:#2b2b2b;font-size:13px;line-height:1.5;",
     // 字体：family 别名 ShangshouSoftCandy（与气泡/菜单/设置同一套），实际字库是
     // assets/fonts/ 那个槽位里的**站酷快乐体 2016（HappyZcool-2016）**——本项目自带字体；
-    // 想再换字体只替换那个 .ttf 即可（槽位文件名是历史硬编码，见 scripts/swap-assets.ps1）。
+    // 想再换字体只替换那个 .ttf 即可（文件名是历史硬编码的槽位名，不代表字体身份）。
     // 后备链里的 'Yuanti SC'/'YouYuan'/'幼圆' 等只在字库加载失败时兜底；最后那串系统 UI 字体
     // 还负责字库**缺字形**的字符——该字库是 CJK 子集，ASCII 里没有 ( ) [ \ ] ^ _ ` | 这 8 个，
     // 所以界面文案尽量不用括号（用「」或直接换说法），万一出现也由雅黑 UI 渲染而不是 Comic Sans。

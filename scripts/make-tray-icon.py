@@ -11,7 +11,7 @@
 #   python scripts/make-tray-icon.py                 # notify-done → tray.png + app.ico
 #   python scripts/make-tray-icon.py --src assets/pic/notify-question.png
 #
-# 由 scripts/swap-assets.ps1 在换血末尾自动调用；也可单独重跑。
+# 换角色形象后必须重跑一次——否则托盘/任务栏上挂的还是上一个角色的脸。
 from __future__ import annotations
 
 import argparse

@@ -43,7 +43,7 @@ The UI icons in `assets/pic/` still come from the upstream asset pack and are
     **站酷快乐体 2016（HappyZcool-2016）**，内嵌版权声明
     `(c) Copyright LuiBingKe 2016`（Version 3.12，6763 个常用汉字，字重 400）。
     它**不适用**下面那条「禁止商用」限制，自身授权以版权方条款及本项目取得的授权为准。
-    - 文件名 `上首软糖体.ttf` 是渲染端硬编码的**槽位名**（见 `scripts/swap-assets.ps1`），
+    - 文件名 `上首软糖体.ttf` 是渲染端硬编码的**槽位名**（不代表字体身份），
       不代表字体身份；
     - 上游原版字体（SSRuanTangTi，4MB）已移出 `assets/`，留档在
       `shell/legacy/fonts/`（该目录不进发行包）。

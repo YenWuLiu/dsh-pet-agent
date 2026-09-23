@@ -125,7 +125,7 @@ $picMissing = @($picNames | Where-Object { -not (Test-Path (Join-Path $picDir "$
 # 的脸挂在托盘上，所以这里只提示、不算验收失败（缺了托盘会回退到宿主 /pic/ 的角色图标）。
 $trayIcon = Join-Path $root 'runtime\electron-helper\tray.png'
 if (-not (Test-Path $trayIcon)) {
-  Write-Host '提示：缺托盘图标 runtime\electron-helper\tray.png —— 跑一下 python scripts\make-tray-icon.py（或用 .\scripts\swap-assets.ps1 自动生成）'
+  Write-Host '提示：缺托盘图标 runtime\electron-helper\tray.png —— 跑一下 python scripts\make-tray-icon.py 生成'
 }
 
 # --- 3.5 锚点契约（角色高/脚底线/水平中心逐个对齐 idle）---
@@ -170,7 +170,7 @@ $ok = -not $missing.Count -and -not $badSpec.Count -and -not $fontMissing -and
   -not $picMissing.Count -and -not $anchorBad.Count
 Write-Host ""
 if ($ok) {
-  Write-Host '全部通过 ✅ 可以运行 swap：.\scripts\swap-assets.ps1'
+  Write-Host '全部通过 ✅ 素材齐备，可以 pnpm start 跑起来看效果'
   exit 0
 } else {
   Write-Host '还有缺口 ❌（对照 docs/动画生成清单.md 补齐）'

@@ -2276,7 +2276,7 @@ async function boot() {
 }
 
 // 注入打字资源：界面字体 + 点击/拖拽光标图标（与浏览器 overlay 同一套素材，host 经 /dsh-pet-7340/ 提供）
-// 字体：槽位文件名「上首软糖体.ttf」是历史遗留的硬编码名（见 scripts/swap-assets.ps1），
+// 字体：槽位文件名「上首软糖体.ttf」是历史遗留的硬编码槽位名（不代表字体身份），
 // 里面装的是本项目自带的界面字体——站酷快乐体 2016（HappyZcool-2016，© LuiBingKe 2016）；
 // CSS 侧一律用 family 别名 ShangshouSoftCandy，换字体只换 assets/fonts/ 里的文件即可。
 function injectAssets() {
