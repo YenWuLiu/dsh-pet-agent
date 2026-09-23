@@ -140,8 +140,8 @@ pnpm start       # = node lib/bin.js；开发期可用 pnpm dev（tsx 直跑 src
 
 | 产物 | 用途 | 冷启动 |
 |---|---|---|
-| `DSH-PET-<ver>-setup.exe` | **NSIS 安装版**：按用户装到 `%LOCALAPPDATA%\Programs`，无需管理员，带开始菜单/桌面快捷方式与卸载项 | ~2 秒 |
-| `win-unpacked\DSH-PET.exe` | 免解包直跑目录（同一份内容），适合绿色部署 | ~2 秒 |
+| `DSH-PET-AGENT-<ver>-setup.exe` | **NSIS 安装版**：按用户装到 `%LOCALAPPDATA%\Programs`，无需管理员，带开始菜单/桌面快捷方式与卸载项 | ~2 秒 |
+| `win-unpacked\DSH-PET-AGENT.exe` | 免解包直跑目录（同一份内容），适合绿色部署 | ~2 秒 |
 
 > 只出安装版（2026-09 起）：早先那个单文件 portable 版每次启动都要把 ~260 MB 的 app
 > 解包到 `%TEMP%`，冷启动实测约 3 分钟——拿来「开机自启」体验很差，已去掉。

@@ -209,7 +209,7 @@ foreach ($e in $exes) {
 # 清单里同时记下免解包直跑目录的位置：win-unpacked 与安装版是同一份内容，
 # 但省掉安装、启动也比「解包到 %TEMP%」快得多（~2.3 秒）。
 # 注意别用 package.json 的 name 猜 exe 名：那是 dsh-pet，
-# 打包产物的名字来自 electron-builder 的 productName（DSH-PET）——直接看盘。
+# 打包产物的名字来自 electron-builder 的 productName（DSH-PET-AGENT）——直接看盘。
 $unpacked = Join-Path $dist 'win-unpacked'
 $unpackedExe = @(Get-ChildItem $unpacked -Filter *.exe -ErrorAction SilentlyContinue |
   Where-Object { $_.Name -notmatch '^(elevate|Uninstall)' } | Select-Object -First 1)
