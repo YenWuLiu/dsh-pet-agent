@@ -12,25 +12,43 @@
 **新克隆的仓库没有它，跑一次：**
 
 ```sh
-.\scripts\get-ffmpeg.ps1          # 装到 tools\ffmpeg.exe
-.\scripts\get-ffmpeg.ps1 -Check   # 只体检现有安装，不下载
+.\scripts\get-ffmpeg.ps1                      # 装到 tools\ffmpeg.exe
+.\scripts\get-ffmpeg.ps1 -Check               # 只体检现有安装，不下载
+.\scripts\get-ffmpeg.ps1 -FromFile <本地zip>   # 用自己下好的包安装
 ```
 
-默认下 [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) 的 release **essentials** 构建
-（`.zip`，109 MB，Windows 自带解压，不需要 7-Zip）。
+### 默认下载源（实测数据）
 
-**为什么 essentials 就够**：管线只需要
+默认是 **BtbN 的 FFmpeg-Builds GitHub 发布，经 `gh-proxy.com` 代理** —— 本机实测各源速度差 250 倍：
+
+| 源 | 速度 | 约需 |
+|---|---|---|
+| `gh-proxy.com` + BtbN 发布 | **13,815 KB/s** | ~15 秒 ← 默认 |
+| `ghfast.top` + BtbN 发布 | 4,906 KB/s | ~40 秒 |
+| `github.com` 直连 | 185 KB/s | ~10 分钟 |
+| `gyan.dev` 官方 | 55 KB/s | ~34 分钟 |
+
+> ⚠️ **第三方代理意味着你信任它转发的二进制。** 脚本装完会打印版本与 sha256，介意的话
+> 用 `-Url` 指向官方源，或自己下好再用 `-FromFile`。
+> 另外：本机实测这些源都会**中途断流**（gh-proxy 下到 54% 停住），所以脚本用 `curl.exe`
+> 带 `-C -` 断点续传 + 最多 5 次重试。真下不动就用 `-FromFile`。
+
+### 需要哪些能力
+
+管线只依赖这几项，脚本装完会自动体检（缺一即 exit 1）：
 
 - `libvpx-vp9` **编码器** —— 出 VP9-Alpha 成品
 - `qtrle` / `hevc` / `prores` **解码器** —— 读各种手扣 MOV 母版
 
-官方库清单里 essentials 含 `libvpx`，且「所有变体都包含全部内置组件」，三类解码器都是内置的。
-full 版多出来的 vulkan / whisper / libplacebo 等本管线一个都不用，而且 full 只提供 `.7z`
-（169 MB，需 7-Zip）—— 要它就用 `-Url` 指过去：
+essentials / gpl / full 各变体都满足（解码器是 ffmpeg 内置的，编码器靠 `libvpx`，
+三个变体都含）。full 版多出来的 vulkan / whisper / libplacebo 等本管线一个都不用。
+要指定别的源就用 `-Url`：
 
 ```sh
 .\scripts\get-ffmpeg.ps1 -Url 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z'
 ```
+
+（`.7z` 需要 7-Zip；`.zip` 用 Windows 自带解压。）
 
 **版本差异不影响验收**：`check-assets.ps1` 查的是「640×360 / 真 alpha / 锚点契约」，
 不是字节相等。仓库里已提交的 38 条 webm 是用 full 9.0.1 出的；换版本重跑，容器字节
