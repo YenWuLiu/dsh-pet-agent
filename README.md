@@ -2,41 +2,47 @@
 
 一个**装在自己电脑上的独立 Agent**（基于 DeepSeek Harness 内核）：会聊天，也会真的
 动手干活——pwsh 执行命令、读写文件、控鼠标键盘、管窗口、开程序、截图"看"屏幕。
-**桌宠只是她的外壳**：一只角色站在桌面右上角，双击就说话。**动画由本项目自制 —— 不附带上游素材包**（`assets/webm/` 只放自制动画，逐条出片），见 [素材与授权](#素材与授权)。
+**桌宠只是她的外壳**：一只角色站在桌面右上角，双击就说话。
+
+**从素材到外壳都在这一个仓库里**：38 条动画逐条出片，表情图标与拖拽光标自己出图，
+Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shell`）。
 
 > **独立运行**：不装 dsh CLI、不需要 monorepo，整个内核作为普通 npm 依赖跑在自己的
 > 进程里。
 > **自己的配置**：模型走她自己的一份——右键 → 设置里填协议 / 接口地址 / API Key /
 > 模型 id，Key 进凭据库（`~/.dsh/.credentials.yaml`，0600），不进配置文件；会话记忆、
 > 托盘、开机自启项也都是她自己的。
-> **动画自己生产**：出片流程见 `docs/动画生成清单.md`，转码与验收见 `assets/README.md`。
+> **素材自己生产**：出片流程见 [`docs/动画生成清单.md`](docs/动画生成清单.md)，转码与验收见
+> [`assets/README.md`](assets/README.md)。
+> **外壳自己维护**：透明窗/物理/菜单/面板/气泡全在本仓库的 `shell/` 与
+> `runtime/electron-helper/` 里，改了就跑 `pnpm verify:shell` 过闸，见
+> [`shell/README.md`](shell/README.md)。
 
-## 素材与授权（重要）
+## 素材与授权
 
-**本仓库不附带上游素材包**：`assets/webm/` 只放本项目自制的动画，逐条生产
-（规格契约与生产流程见 [`assets/README.md`](assets/README.md) 与
-`docs/动画生成清单.md`）。`assets/config.jsonc` 引用的动画名**与 `assets/webm/` 里实际存在的文件一一对应**。
+**`assets/` 里的素材全部由本项目自制**——动画、表情图标、拖拽光标、托盘与应用图标都是自己
+出片或自己生成的，每个都能重建（生成脚本随仓库走）。代码按 [MIT](LICENSE)；第三方署名与
+完整条款见 [`NOTICE.md`](NOTICE.md)。
 
-| 内容 | 状态 | 授权 |
-|---|---|---|
-| `assets/webm/` | 本项目自制动画（**现有 38 条**，逐条出片） | 自制，随代码 MIT |
-| `assets/fonts/上首软糖体.ttf` | 本项目自带界面字体 **站酷快乐体 2016**（HappyZcool-2016）；文件名是渲染端硬编码的槽位名，不代表字体身份 | 版权方条款（内嵌声明 © LuiBingKe 2016） |
-| `assets/pic/` | 手套拖拽光标 ×2 + 通知表情图标 ×6，**目前仍沿用上游素材包** | 上游条款：允许开源使用，**禁止商用** |
-| `assets/config.jsonc` | 由上游动画池配置改写，动画名换成本项目清单 | 随代码 MIT |
+| 内容 | 是什么 | 怎么来的 | 授权 |
+|---|---|---|---|
+| `assets/webm/` | **38 条动画**：待机 1 · 转向 1 · 点击回应 2 · 移动 1 · 小动作 9 · 玩耍 15 · 吃什么 2 · 文字 1 · 工作状态 6 | 手扣母版 → `python scripts/normalize-webm.py` 归一化出片 | 本项目自制，随代码 MIT |
+| `assets/pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自己出图 | 本项目自制，随代码 MIT |
+| `assets/pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16) | `python scripts/make-cursors.py` 生成 | 本项目自制，随代码 MIT |
+| `runtime/electron-helper/tray.png`<br>`packaging/app.ico` | 托盘图标 32×32、应用图标（16~256 共 7 档） | `python scripts/make-tray-icon.py` 从 `notify-done.png` 派生 | 本项目自制，随代码 MIT |
+| `assets/fonts/上首软糖体.ttf` | 界面字体 **站酷快乐体 2016**（HappyZcool-2016），**唯一非自制项** | 第三方字库 | 版权方条款（内嵌声明 © LuiBingKe 2016），**不适用** MIT |
+| `assets/config.jsonc` | 动画池 / 物理 / 联动的**唯一事实来源** | 本项目自己维护，只引用已出片的 38 条 | 随代码 MIT |
 
-**授权：允许开源使用，禁止商用**——这条**只适用于**上表里仍来自上游的 `assets/pic/`。
-上游素材不适用本仓库根目录的 MIT License（MIT 只覆盖代码）；署名与完整条款见
-[`assets/README.md`](assets/README.md) 与 [`NOTICE.md`](NOTICE.md)。素材作者：
-**PC2005-cloud**（<https://github.com/PC2005-cloud/dsh-pet>）。
-> 想彻底脱离上游素材条款，只需把那 8 个图标换成自制图标（文件名不变即可）。
+> 文件名 `上首软糖体.ttf` 是渲染端**硬编码的槽位名**（不代表字体身份）：换字库时保持文件名
+> 不变即可，字面身份由 `scripts/inspect-font.mjs` 那道闸盯着。
+> 换角色形象后要重跑 `make-tray-icon.py` —— 忘了就还是上一个角色的脸挂在托盘上。
 
-**当前进度（2026-09-23）**：`assets/webm/` 有 **38 条**自制动画。母版是 `素材加工\` 下那批
-**手扣、自带 alpha 通道**的 HEVC MOV（752×560 / 864×496 / 560×752，30fps，10.07~10.09s），
-经 `scripts/normalize-webm.py` 归一化成 640×360 VP9-Alpha：
-待机 1 · 转向 1 · 点击回应 2 · 移动 1 · 小动作 9 · 玩耍 15 · 吃什么 2 · 文字 1 · 工作状态 6。
-`assets/config.jsonc` **只引用这 38 条**，`scripts/check-assets.ps1` **三项全绿**：
-配置共引用 38 个动画、0 个缺文件、全部 640×360 带 alpha，锚点契约 37 条全部达标
-（最大偏差 3px，容差 ±8px）。上一版那 92 个"待出片槽位名"已按「以新素材为准」整体放弃。
+**当前进度（2026-09-24）**：`assets/webm/` **38 条**，合计 **57.4 MB**。母版是 `素材加工\` 下
+那批**手扣、自带 alpha 通道**的 HEVC MOV（752×560 / 864×496 / 560×752，30fps，10.07~10.09s），
+经 `scripts/normalize-webm.py` 归一化成 640×360 VP9-Alpha。`assets/config.jsonc` **只引用这
+38 条**，`scripts/check-assets.ps1` **三项全绿**：配置共引用 38 个动画、0 个缺文件、全部
+640×360 带 alpha，锚点契约 37 条全部达标（最大偏差 3px，容差 ±8px）。上一版那 92 个
+"待出片槽位名"已按「以新素材为准」整体放弃。
 
 > **要跑这条管线，先装 ffmpeg**：`.\scripts\get-ffmpeg.ps1`。它是管线硬依赖
 > （`normalize-webm.py` / `check-assets.ps1` / `check-anchor.py` 都调它），但单个文件
@@ -98,7 +104,7 @@
 
 `runtime/electron-helper/renderer.js` 的换片是**硬切**——新动画首帧真正上屏
 （`requestVideoFrameCallback`）后，同一帧里把旧层停播并撤下，两段不叠、不淡化。
-开发期那套「交叉淡化（溶解）」与「首尾焊接」是按自制素材的接缝问题做的；上游这套动作
+开发期那套「交叉淡化（溶解）」与「首尾焊接」是按素材接缝问题做的过渡方案；本项目这批动作
 每段首尾都是同一个站姿，接得上，不需要过渡。冒烟自检里的覆盖度不变量仍然守着
 （任意时刻至少一层完全不透明，实测 173 次采样最小覆盖度 = 1.00，不会闪背景）。
 
@@ -181,10 +187,14 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 └────────────────────────────────────────────┘
 ```
 
-## 与 DSH-PET 的关系（身份隔离）
+外壳自身再分两层：`runtime/electron-helper/` 是 Electron 侧（窗口、渲染、菜单、托盘），
+`shell/` 是它的**纯逻辑层源码**（物理、几何、菜单树、气泡节奏、对话面板覆盖层），
+`pnpm build:desktop-core` 把 `shell/` 打成 `runtime/electron-helper/shared-core.js` 供渲染层消费。
 
-本项目是 `DSH-PET` 的**独立发行版**：同一套内核能力，但**动画自制**，且与本机上的
-DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
+## 与早期版本 DSH-PET 的关系（互不干扰）
+
+本项目是本机另一份桌宠 **DSH-PET** 的独立发行版：同一套内核能力，但素材自制、外壳自己维护，
+且与本机上的 DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
 
 | 身份项 | 本项目（DSH-PET-AGENT） | DSH-PET |
 |---|---|---|
@@ -197,23 +207,23 @@ DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
 > **注意：两份状态是分开的**——API Key 与模型配置要在本项目里重新填一次
 > （Key 进同一个凭据库 `~/.dsh/.credentials.yaml`，但模型配置各存各的）。
 >
-> **路由前缀 `/dsh-pet-7340` 故意没改**：它在上游逐字节副本 `shell/shared/` 里有 28 处
-> 引用，而 `shell/shared/` 受 `scripts/check-shared-parity.mjs` 的逐字节一致性约束不许动。
-> 前缀只是路径命名空间，两进程端口不同即不冲突。改端口就够了。
+> **路由前缀 `/dsh-pet-7340` 是历史命名**：它在渲染端与 HTTP 契约里写死，只是个路径命名
+> 空间。两个进程**端口不同即不冲突**，所以没必要改前缀——真要改，跟着
+> `src/server.ts` 的 `ROUTE_PREFIX` 一起改即可。
 
 ## 目录速查
 
 | 路径 | 作用 |
 |---|---|
-| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。规格契约与授权见 [`assets/README.md`](assets/README.md) |
+| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。素材清单、规格契约与生成脚本见 [`assets/README.md`](assets/README.md) |
 | `runtime/electron-helper/` | Electron 桌宠壳（透明窗、渲染、菜单、托盘）；其中 `shared-core.js` 是 **构建产物** |
-| `shell/` | 外壳纯逻辑层源码：`shared/`（上游 dsh-pet v0.2.11 逐字节副本）+ `ours/`（本项目覆盖）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js`。详见 [`shell/README.md`](shell/README.md) |
+| `shell/` | 外壳纯逻辑层源码：`shared/`（常量/选择器/多屏几何/运动/物理/配置拍平/菜单/气泡等纯逻辑）+ `ours/`（本项目自己的实现：常驻流式对话面板、面板落位、气泡节奏、菜单夹取）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js`。详见 [`shell/README.md`](shell/README.md) |
 | `src/` | host 侧 TS：`bin.ts`（内核组合入口）、`server.ts`（HTTP 路由）、`computer-use.ts`、`model-config.ts`、`autostart.ts`、`vendor/` |
-| `scripts/` | **15 个脚本**：素材管线 5 + 外壳验收闸 9 + 打包 1。清单、作用、何时跑见 [`scripts/README.md`](scripts/README.md) |
-| `docs/` | 动画提示词模板、引擎衔接规范；**文档总入口是 [`docs/README.md`](docs/README.md)** |
+| `scripts/` | **16 个脚本**：素材管线 6 + 外壳验收闸 9 + 打包 1。清单、作用、何时跑见 [`scripts/README.md`](scripts/README.md) |
+| `docs/` | 动画提示词模板、引擎衔接规范、形象设定图；**文档总入口是 [`docs/README.md`](docs/README.md)** |
 | `packaging/` | `electron-builder.yml`、`launcher.cjs`（打包版启动器）、`app.ico`；`staging*/` 是组装中间产物，可随时清（`打包.bat clean`） |
 | `tools/` | `ffmpeg.exe`（**不进版本管理**，用 `scripts/get-ffmpeg.ps1` 装）+ `chat-smoke/` 面板自检。见 [`tools/README.md`](tools/README.md) |
-| `licenses/` | 上游 dsh-pet 与 DeepSeek Harness 的许可证全文 |
+| `licenses/` | 第三方许可证全文（DeepSeek Harness 等）；适用范围与署名见 [`NOTICE.md`](NOTICE.md) |
 | `patches/` | pnpm `patchedDependencies`（node-pty 补丁） |
 | `lib/` | `pnpm build` 的产物（`cordis.patch.prod.yml` 指向这里） |
 | `dist/` | `scripts/pack-exe.ps1` 的产物：安装版 exe + `win-unpacked/` |
@@ -223,8 +233,9 @@ DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
 
 ## 许可证
 
-- **代码**: [MIT](LICENSE)
-- **动画**（`assets/webm/`）: 本项目自制，随代码按 MIT 处理（**不附带上游素材包**）
-- **界面图标**（`assets/pic/`）: 仍来自上游 dsh-pet 素材包，**开源可用、禁止商用**；
-  换成自制图标即可完全脱离该条款
-- 完整署名与条款见 [`assets/README.md`](assets/README.md) 与 [`NOTICE.md`](NOTICE.md)
+- **代码**（含桌宠外壳与内核组合层）: [MIT](LICENSE)
+- **素材**（`assets/webm/` 动画、`assets/pic/` 图标与光标、托盘与应用图标）: 本项目自制，
+  随代码按 MIT 处理
+- **界面字体**（`assets/fonts/上首软糖体.ttf`）: 第三方字库**站酷快乐体 2016**
+  （HappyZcool-2016，© LuiBingKe 2016），按版权方条款使用，**不适用** MIT
+- 第三方代码署名、字体与依赖的完整条款见 [`NOTICE.md`](NOTICE.md)

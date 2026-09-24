@@ -61,7 +61,7 @@ assets/webm/*.webm
 | [`动画设计与衔接规范.md`](动画设计与衔接规范.md) | **引擎行为与素材契约** —— 交互状态机、衔接契约、风格组、渲染端实现细节、朝向镜像、权重守恒、硬性约束、量测方法 | 要改引擎或排查"动画播不对"的人 |
 | [`../assets/README.md`](../assets/README.md) | 素材规格契约、生产流程、编码参数、授权条款 | 改素材的人 |
 | [`../shell/README.md`](../shell/README.md) | 外壳纯逻辑层：架构边界、目录、构建与验收、覆盖清单、上游同步 | 改外壳的人 |
-| [`../scripts/README.md`](../scripts/README.md) | 15 个脚本的分类、作用、何时跑 | 想搞清楚工具链的人 |
+| [`../scripts/README.md`](../scripts/README.md) | 16 个脚本的分类、作用、何时跑 | 想搞清楚工具链的人 |
 | [`../tools/README.md`](../tools/README.md) | 外部二进制与冒烟夹具 | 同上 |
 | [`../NOTICE.md`](../NOTICE.md) | 第三方代码与素材署名 | 关心授权的人 |
 

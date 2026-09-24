@@ -1,12 +1,13 @@
 # NOTICE — 第三方代码与素材署名 / Third-Party Notices
 
-DSH-PET-AGENT 的**代码**来自上游 dsh-pet（MIT）；**动画素材为本项目自制**。
-`assets/pic/` 的界面图标目前仍沿用上游素材包，受「开源可用、禁止商用」约束。
+DSH-PET-AGENT 的**素材（`assets/` 下的动画、图标、光标，以及由图标派生的托盘/应用图标）
+全部为本项目自制**；**桌宠外壳的代码源自上游 dsh-pet（MIT）**，本项目在其上做了大量修改，
+按 MIT 保留署名。
 
-The **code** of DSH-PET-AGENT comes from the upstream dsh-pet project (MIT). The
-**animations are produced by this project and are not shipped in this repository**.
-The UI icons in `assets/pic/` still come from the upstream asset pack and are
-"open-source use only, no commercial use".
+All **assets** shipped in `assets/` (animations, icons, cursors and the tray/app icons derived
+from them) are **produced by this project**. The **desktop-shell code derives from the upstream
+dsh-pet project (MIT)** and has been substantially modified here; upstream attribution is kept
+below. The only third-party asset still used at runtime is the UI font (see §2).
 
 ---
 
@@ -16,53 +17,49 @@ The UI icons in `assets/pic/` still come from the upstream asset pack and are
 - **代码许可证**: MIT（见 `licenses/LICENSE.dsh-pet`）
 - **本项目使用/修改的部分**（仅代码）:
   - `runtime/electron-helper/`（Electron 桌面壳：`main.js` / `renderer.js` /
-    `preload.js` / `index.html` / `shared-core.js`——本项目在其上做了修改：
-    设置与审批对话框、双击打开对话面板、屏幕可视矩形钳制、右键菜单项裁剪、
-    托盘提示文案改为本版角色名）
+    `preload.js` / `index.html` / `pointer-target.js` / `shared-core.js`）——本项目在其上做了
+    大量修改与扩展：常驻流式对话面板与头顶气泡节奏、输入条（compact）形态、设置卡与
+    审批对话框、双击打开对话、面板跟随与屏幕边缘碰撞、屏幕可视矩形钳制、右键菜单项裁剪、
+    点击穿透兜底通道、托盘文案改为本版角色名
   - `src/vendor/config.ts` / `src/vendor/whisper.ts` /
-    `src/vendor/llm-reasoning.ts`（host 侧配置合并与碎碎念生成）
+    `src/vendor/llm-reasoning.ts`（host 侧配置合并、碎碎念生成、思考段剥离）
   - `shell/shared/`（**16 个文件，上游 dsh-pet v0.2.11 `src/shared/*.ts` 的逐字节副本**，
     只取纯逻辑层：常量/选择器/多屏几何/运动/物理/积分/配置拍平/菜单/气泡。
     本项目对上游的差异实现单独放在 `shell/ours/`，不修改这批副本；
     构建与验收方式见 `shell/README.md`）
-  - `shell/ours/`（本项目自有实现：常驻流式对话面板 `chat.js`、
-    右键菜单夹取基准兼容层 `menu.ts`——均取自/扩展本仓库自身代码）
+  - `shell/ours/`（本项目自有实现：常驻流式对话面板 `chat.ts`、面板落位 `chat-place.ts`、
+    气泡节奏 `bubble.ts`、菜单夹取兼容层 `menu.ts`——均取自/扩展本仓库自身代码）
 
-> `runtime/electron-helper/shared-core.js` 自本次改造起是**构建产物**
+> `runtime/electron-helper/shared-core.js` 是**构建产物**
 > （由 `pnpm build:desktop-core` 从 `shell/` 生成），不再手工编辑；
 > 重建前的产物留档在 `shell/legacy/shared-core.built-old.js` 作为差分比对基准。
 
-## 2. 素材：动画自制 + 界面图标沿用上游（非商业授权）
+## 2. 素材：全部本项目自制；界面字体是第三方字库
 
-- **本项目自制（不适用下面那条限制）**:
-  - `assets/webm/` — 动画素材目录，**只放本项目自制的动画**（不附带上游素材包）。
-    动画由本项目自行生产：规格契约与生产流程见 [`assets/README.md`](assets/README.md)，
-    生成提示词见 `docs/动画生成清单.md`，衔接契约见 `docs/动画设计与衔接规范.md`，
-    归一化与验收工具见 `scripts/normalize-webm.py`、`scripts/check-assets.ps1`。
-  - `assets/fonts/上首软糖体.ttf` — 本项目自带的界面字体
-    **站酷快乐体 2016（HappyZcool-2016）**，内嵌版权声明
-    `(c) Copyright LuiBingKe 2016`（Version 3.12，6763 个常用汉字，字重 400）。
-    它**不适用**下面那条「禁止商用」限制，自身授权以版权方条款及本项目取得的授权为准。
-    - 文件名 `上首软糖体.ttf` 是渲染端硬编码的**槽位名**（不代表字体身份），
-      不代表字体身份；
-    - 上游原版字体（SSRuanTangTi，4MB）已移出 `assets/`，留档在
-      `shell/legacy/fonts/`（该目录不进发行包）。
-- **仍来自上游 dsh-pet 素材包（受下面条款约束）**:
-  - `assets/pic/` — 手套拖拽光标 ×2 + 通知表情图标 ×6
-  - `assets/config.jsonc` — 由上游随素材发布的动画池配置改写而来
-    （动画名已替换为本项目自制清单，当前为占位名）
-- **授权条款（上游作者声明，仅适用于上面仍来自上游的部分）**:
-
-  > **允许开源使用，禁止商用。**
-
-  - 可以在开源项目中使用、修改、再分发这些素材（保留本说明与署名）。
-  - **不可以**用于商业用途（商业产品、付费服务、广告素材等）。
-  - 这些素材**不适用**本仓库根目录的 MIT License——MIT 只覆盖代码。
-- **署名**: 素材作者 **PC2005-cloud**（dsh-pet 项目），
-  原始出处 <https://github.com/PC2005-cloud/dsh-pet>
-
-> 若要让本项目**完全脱离**上游素材条款，只需把 `assets/pic/` 那 8 个图标换成自制图标
-> （文件名保持不变即可，渲染端按名取用）。这是目前唯一的遗留项。
+- **本项目自制（随代码按 MIT 处理）**:
+  - `assets/webm/` — **38 条动画**，由本项目自行生产：手扣带 alpha 的 MOV 母版经
+    `scripts/normalize-webm.py` 归一化为 640×360 VP9-Alpha。规格契约与生产流程见
+    [`assets/README.md`](assets/README.md)，生成提示词见 `docs/动画生成清单.md`，
+    衔接契约见 `docs/动画设计与衔接规范.md`，验收工具见 `scripts/check-assets.ps1`、
+    `scripts/check-anchor.py`。
+  - `assets/pic/notify-*.png` — 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），
+    256×256，本项目自己出图。
+  - `assets/pic/cursor-*.png` — 拖拽光标 ×2（张开 / 握起），32×32、热点 (16,16)，
+    由 `python scripts/make-cursors.py` 生成（几何图形 + 角色配色，可重建）。
+  - `runtime/electron-helper/tray.png` 与 `packaging/app.ico` — 由
+    `python scripts/make-tray-icon.py` 从 `assets/pic/notify-done.png` 派生
+    （换角色形象后重跑一次）。
+  - `assets/config.jsonc` — 本项目自己维护的动画池/物理/联动配置（唯一事实来源）。
+- **第三方字库（不适用 MIT）**:
+  - `assets/fonts/上首软糖体.ttf` — 本项目自带界面字体 **站酷快乐体 2016
+    （HappyZcool-2016）**，内嵌版权声明 `(c) Copyright LuiBingKe 2016`
+    （Version 3.12，6763 个常用汉字，字重 400）。它以版权方条款及本项目取得的授权为准，
+    **不适用**本仓库根目录的 MIT License。
+    - 文件名 `上首软糖体.ttf` 是渲染端硬编码的**槽位名**，不代表字体身份；
+      字面身份由 `scripts/inspect-font.mjs --check --expect-family HappyZcool-2016` 盯着。
+    - 上游原版字库文件（SSRuanTangTi，4 MB）留档在 `shell/legacy/fonts/`，**只作历史比对、
+      不进发行包**（`scripts/pack-exe.ps1` 不收集该目录）；它同样不适用 MIT，
+      若要彻底清空可整目录删除，没有任何脚本或验收闸引用它。
 
 ## 3. dsh 内核（DeepSeek Harness，MIT）
 
@@ -81,5 +78,5 @@ typescript（Apache-2.0）等，均保留其各自许可证。
 
 ---
 
-**致谢**: 上游 dsh-pet 提供了桌宠外壳的代码与界面图标；动画规范文档
+**致谢**: 上游 dsh-pet 提供了桌宠外壳代码的起点与纯逻辑层参考；动画规范文档
 （`docs/`）来自本项目早前的自制素材工程。
