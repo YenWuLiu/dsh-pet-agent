@@ -48,7 +48,7 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 | <img src="assets/preview/吃Token.gif" width="160" alt="吃Token" title="吃Token"> | <img src="assets/preview/深度思考碎碎念.gif" width="160" alt="深度思考碎碎念" title="深度思考碎碎念"> | <img src="assets/preview/工作状态-冒泡思考.gif" width="160" alt="工作状态-冒泡思考" title="工作状态-冒泡思考"> |
 
 > 这些 GIF 是**给 README 看的预览**，由 `python scripts/make-previews.py` 从
-> `assets/webm/` 生成（逐条按内容裁方窗 → 缩到 180×180，见
+> `assets/webm/` 生成（以引擎角色框为中心取方窗 → 缩到 180×180，见
 > [`assets/README.md`](assets/README.md)）。GIF 只有 1 位透明，边缘比原片略硬；
 > 想要原画质直接开 `assets/webm/` 里的 webm，或把某条动画挂进自己的 README。
 

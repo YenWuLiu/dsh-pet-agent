@@ -12,10 +12,12 @@
    透明**（实测：压在浅色 README 上就是一块黑板），而且 ffmpeg **一声不吭**——
    静默错，只能靠眼睛发现。与 `normalize-webm.py` 的 `in_decoder()` 同一处坑。
 
-2. **逐条裁方窗再缩放**：webm 是 640×360，而角色只占中间约 210×272。整帧直接缩到 200px
-   宽，角色只剩 76px 高、在 README 里看不清；按「全部内容 bbox」裁一个正方形再缩到 SIDE，
-   同样的显示宽度下角色能大一倍。bbox 口径与 `normalize-webm.py` 的 union_all 一致
-   （alpha > ALPHA_THR 的所有像素），所以手里的乐器、头顶的气泡、鲸鱼虚影都不会被切掉。
+2. **以引擎角色框为中心裁方窗再缩放**：webm 是 640×360，而角色只占中间约 210×272。整帧
+   直接缩到 200px 宽，角色只剩 76px 高、在 README 里看不清；裁一个正方形再缩到 SIDE，
+   同样的显示宽度下角色能大一倍。方窗**边长**由「全部内容 bbox」决定（口径与
+   `normalize-webm.py` 的 union_all 一致：alpha > ALPHA_THR 的所有像素），所以手里的乐器、
+   头顶的气泡、鲸鱼虚影都不会被切掉；**中心**则固定在引擎角色框（`shared-core.js` 的
+   `HIT_BOX`）的中心，所以 9 格预览摆在一起时角色位置与大小是对齐的。
 
 3. **GIF 只有 1 位 alpha**：webm 是软件 alpha（边缘抗锯齿），GIF 只能"一个像素要么全透明、
    要么全不透明"，所以边缘会比 webm 略硬、头发渐变会有一点点色带。这是 GIF 格式的硬限制
@@ -43,6 +45,10 @@ WEBM = ROOT / 'assets' / 'webm'
 DEFAULT_OUT = ROOT / 'assets' / 'preview'
 
 CW, CH = 640, 360        # assets/webm/ 的画布（引擎契约，见 assets/README.md）
+# 引擎的角色框（runtime/electron-helper/shared-core.js 的 HIT_BOX = {200,50,440,335}）的中心。
+# 所有预览窗都**以它为中心**取方窗 —— 若改成"以内容 bbox 为中心"，带气泡/道具的片（气泡偏在
+# 一侧）会把角色推出画面中央，9 格预览摆在一起时角色位置和大小都对不齐。
+ANCHOR_X, ANCHOR_Y = 320, 192
 ALPHA_THR = 40           # 「内容」阈值：与 normalize-webm.py 的 union_all 同口径
 MARGIN = 1.12            # bbox 外扩比例：留出抗锯齿边缘，绝不切到内容
 SIDE = 180               # 输出正方形边长（README 里按 width=160 显示）
@@ -118,15 +124,21 @@ def content_bbox(path: Path) -> tuple[int, int, int, int, int]:
 
 
 def window(bbox: tuple[int, int, int, int]) -> dict:
-    """内容 bbox → 以它为中心的**正方形**裁剪窗（画布装不下的部分靠 pad 补透明）。
+    """内容 bbox → **以引擎角色框为中心**的正方形裁剪窗（画布装不下的部分靠 pad 补透明）。
 
-    先 pad 再 crop（而不是 crop 完再 pad）：这样方窗中心永远落在内容中心上，
-    靠边的动作（比如往左跑的）不会被"夹回画布内"而把角色挤到画面一角。
+    方窗边长取"从中心到内容最远处"的整倍，所以道具/气泡一定装得下，而角色本身始终居中、
+    尺寸也只随道具大小微调（默认清单实测：角色占格子 66~87%，若按内容 bbox 居中则会
+    因为气泡偏在一侧把角色挤到角落）。
+
+    先 pad 再 crop（而不是 crop 完再 pad）：中心可能落在画布外，靠边的动作（比如往左跑的）
+    不会被"夹回画布内"而把角色推偏。
     """
     x0, y0, x1, y1 = bbox
-    side = even_floor(max(x1 - x0 + 1, y1 - y0 + 1) * MARGIN) + 2
-    cx, cy = (x0 + x1 + 1) / 2.0, (y0 + y1 + 1) / 2.0
-    left, top = even_floor(cx - side / 2.0), even_floor(cy - side / 2.0)
+    half = max(abs(x0 - ANCHOR_X), abs(x1 + 1 - ANCHOR_X),
+               abs(y0 - ANCHOR_Y), abs(y1 + 1 - ANCHOR_Y))
+    side = even_floor(half * 2 * MARGIN) + 2
+    left, top = ANCHOR_X - side // 2, ANCHOR_Y - side // 2  # 已是偶数
+    left, top = even_floor(left), even_floor(top)
     pad_x, pad_y = max(0, -left), max(0, -top)
     pad_w = even_floor(CW + pad_x + max(0, left + side - CW)) + 2
     pad_h = even_floor(CH + pad_y + max(0, top + side - CH)) + 2
