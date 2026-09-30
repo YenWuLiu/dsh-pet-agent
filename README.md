@@ -4,7 +4,7 @@
 动手干活——pwsh 执行命令、读写文件、控鼠标键盘、管窗口、开程序、截图"看"屏幕。
 **桌宠只是她的外壳**：一只角色站在桌面右上角，双击就说话。
 
-**从素材到外壳都在这一个仓库里**：52 条动画逐条出片，表情图标与拖拽光标自己出图，
+**从素材到外壳都在这一个仓库里**：52 条动画逐条出片，设定图、表情图标与拖拽光标自己出图，
 Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shell`）。
 
 > **独立运行**：不装 dsh CLI、不需要 monorepo，整个内核作为普通 npm 依赖跑在自己的
@@ -18,76 +18,39 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 > `runtime/electron-helper/` 里，改了就跑 `pnpm verify:shell` 过闸，见
 > [`shell/README.md`](shell/README.md)。
 
-## 素材与授权
+## 她是谁
 
-**`assets/` 里的素材全部由本项目自制**——动画、表情图标、拖拽光标、托盘与应用图标都是自己
-出片或自己生成的，每个都能重建（生成脚本随仓库走）。代码按 [MIT](LICENSE)；第三方署名与
-完整条款见 [`NOTICE.md`](NOTICE.md)。
+一只 **Q 版蓝发鲸鱼女仆**：及腰大波浪（发根深蓝渐到发梢浅蓝）、头顶一根环形卷翘呆毛、
+头两侧各一片鲸鱼鳍状大耳朵、身后拖着一条分叉的鲸鱼大尾巴；深藏青长袖女仆长裙配
+白色荷叶边围裙（围裙上印虎鲸徽记），白短袜黑圆头小皮鞋。日系赛璐璐手绘风、粗描边。
 
-| 内容 | 是什么 | 怎么来的 | 授权 |
-|---|---|---|---|
-| `assets/webm/` | **52 条动画**：待机 2 · 转向 1 · 点击回应 3 · 移动 1 · 小动作 15 · 玩耍 21 · 吃什么 2 · 文字 1 · 工作状态 6 | 手扣母版 → `python scripts/normalize-webm.py` 归一化出片 | 本项目自制，随代码 MIT |
-| `assets/pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自己出图 | 本项目自制，随代码 MIT |
-| `assets/pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16) | `python scripts/make-cursors.py` 生成 | 本项目自制，随代码 MIT |
-| `runtime/electron-helper/tray.png`<br>`packaging/app.ico` | 托盘图标 32×32、应用图标（16~256 共 7 档） | `python scripts/make-tray-icon.py` 从 `notify-done.png` 派生 | 本项目自制，随代码 MIT |
-| `assets/fonts/上首软糖体.ttf` | 界面字体 **站酷快乐体 2016**（HappyZcool-2016），**唯一非自制项** | 第三方字库 | 版权方条款（内嵌声明 © LuiBingKe 2016），**不适用** MIT |
-| `assets/config.jsonc` | 动画池 / 物理 / 联动的**唯一事实来源** | 本项目自己维护，只引用已出片的 52 条 | 随代码 MIT |
+| 设定图 | 动作姿势表 |
+|---|---|
+| <img src="docs/images/character-design-sheet.png" width="400" alt="角色设定图：三视图 / 表情 / 细节 / 配色" title="角色设定图"> | <img src="docs/images/pose-sheet.png" width="400" alt="动作姿势表：12 个姿势（SHIMEJI 风）" title="动作姿势表"> |
+| 三视图 · 表情 · 细节 · 配色——**出片时的形象基准** | 12 个姿势（SHIMEJI 风）——**动作规划的底稿** |
 
-> 文件名 `上首软糖体.ttf` 是渲染端**硬编码的槽位名**（不代表字体身份）：换字库时保持文件名
-> 不变即可，字面身份由 `scripts/inspect-font.mjs` 那道闸盯着。
-> 换角色形象后要重跑 `make-tray-icon.py` —— 忘了就还是上一个角色的脸挂在托盘上。
+> 两张图都在 [`docs/images/`](docs/images)，是**本项目的自有素材**（与全部动画同一套配色，
+> 生成脚本 `scripts/make-cursors.py` 里的颜色常量就取自这里的色板）。要换角色形象，
+> 改的是这两张图 + `assets/webm/` + 重跑 `make-tray-icon.py`。
 
-**当前进度（2026-09-24）**：`assets/webm/` **52 条**，合计 **82.6 MB**。母版是 `素材加工\` 下
-那批**手扣、自带 alpha 通道**的 HEVC MOV（752×560 / 864×496 / 560×752，30fps，10.07~10.09s），
-经 `scripts/normalize-webm.py` 归一化成 640×360 VP9-Alpha。`assets/config.jsonc` **只引用这
-52 条**，`scripts/check-assets.ps1` **三项全绿**：配置共引用 52 个动画、0 个缺文件、全部
-640×360 带 alpha，锚点契约 51 条全部达标（最大偏差 3px，容差 ±8px）。上一版那 92 个
-"待出片槽位名"已按「以新素材为准」整体放弃。
+## 她会什么
 
-**最近三批（+14 条，38 → 52）**：`尤克里里弹唱` / `铃鼓欢拍` / `小号吹奏` / `手风琴拉奏`
-（乐器补充篇）、`星夜换装` / `樱色换装` / `糖果换装` / `万圣换装` / `新年换装` / `大小姐换装`
-（换装补充篇）、`芭蕾小跳` / `芭蕾踮脚旋转`（舞蹈补充篇）、**`待机-整理仪容`（待机补充篇
-——`idle` 池第一次有第二条）**、**`点击回应-生气跺脚`（点击回应补充篇——`clicks` 第三条）**。
-分池**按动作语义**、不按生成批次槽位（补充文档里的「槽位统一 小动作」指的是 `prompts.json`
-那个生成批次桶）：舞蹈与乐器进「玩耍」，换装进「小动作」；分类权重按条数重算为
-31/43/4/2（仍守恒 80）。
+每个动作池挑一条（**待机 / 转向 / 点击回应 / 移动 / 小动作 / 玩耍 / 吃什么 / 文字 /
+工作状态**），下面 9 条就是它们。全部 **52 条**在 `assets/webm/`，VP9-Alpha，
+**实机播放时是透明背景**。
 
-> **idle / clicks 有两条 check-assets 守不住的契约**（它只查齐备 / 规格 / 锚点），
-> 得手工量，口径见 [`docs/动画设计与衔接规范.md`](docs/动画设计与衔接规范.md) §8
-> （640×360、只在两帧前景并集上取 `mean(|Δ|)`、不做任何对齐）：
-> `idle` 要求**首尾无缝**（链式重滚，滚回时不能跳），`clicks` 要求**末帧 ≈ 中立站姿**。
-> 本批实测：`待机-整理仪容` 接缝比值 **3.4×**（比 `休闲待机` 的 4.0× 还好，且接缝 9.90
-> **小于它自己最差的相邻帧差 12.78**）；`点击回应-生气跺脚` 首尾差 9.69，与已有两条
-> （9.26 / 9.63）同量级。两条都合格。
+| 待机 | 转向 | 点击回应 |
+|---|---|---|
+| <img src="assets/preview/休闲待机.gif" width="160" alt="休闲待机" title="休闲待机"> | <img src="assets/preview/东张西望.gif" width="160" alt="东张西望" title="东张西望"> | <img src="assets/preview/点击回应-开心跃动.gif" width="160" alt="点击回应-开心跃动" title="点击回应-开心跃动"> |
+| **移动** | **小动作** | **玩耍** |
+| <img src="assets/preview/螃蟹走路.gif" width="160" alt="螃蟹走路" title="螃蟹走路"> | <img src="assets/preview/整体换装试色.gif" width="160" alt="整体换装试色" title="整体换装试色"> | <img src="assets/preview/优雅女仆舞.gif" width="160" alt="优雅女仆舞" title="优雅女仆舞"> |
+| **吃什么** | **文字** | **工作状态** |
+| <img src="assets/preview/吃Token.gif" width="160" alt="吃Token" title="吃Token"> | <img src="assets/preview/深度思考碎碎念.gif" width="160" alt="深度思考碎碎念" title="深度思考碎碎念"> | <img src="assets/preview/工作状态-冒泡思考.gif" width="160" alt="工作状态-冒泡思考" title="工作状态-冒泡思考"> |
 
-> ✗ **`双马尾换装` 未采用**：母版变身光晕铺满整帧（内容 bbox 顶到 y=0 和 y=559），
-> 归一化脚本末尾「绝不裁内容」的兜底会把脚底从 330 顶到 315 —— **角色悬空 14px**，过不了
-> `check-anchor.py` 的 ±8px。它违反提示词里「全程与四边保持至少 8% 纯绿间距」，重出也不
-> 保证能避免（光晕是模型加的特效），故整条不纳入。母版仍在 `素材加工\归档\mov\`，
-> 没有对应 webm、也不在配置里。同类风险：**带大面积光晕/特效的换装片要先量内容 bbox
-> 有没有顶到画面上下边** —— 顶到了就会触发这个兜底。
-
-> **要跑这条管线，先装 ffmpeg**：`.\scripts\get-ffmpeg.ps1`。它是管线硬依赖
-> （`normalize-webm.py` / `check-assets.ps1` / `check-anchor.py` 都调它），但单个文件
-> 100~212 MB，**不进版本管理** —— 新克隆的仓库没有它，不装就跑不了出片。详见
-> [`tools/README.md`](tools/README.md)。
-
-> ⚠ **一条踩过的坑（2026-09-23）**：早期出片脚本里带 `colorkey=0x00FF00:0.1:0.1`（绿幕键），
-> 而母版是**手扣好、自带 alpha** 的 MOV。`colorkey` 只按 RGB 工作，会**丢弃输入 alpha、
-> 按 RGB 重新生成一张**——键色 `#00FF00` 在这些母版的**透明黑底**上匹配不到任何像素，于是
-> 新 alpha 全是 255，**成片完全不透明**（容器还照旧带 `alpha_mode:1`，实机才发现没有透明
-> 通道）。实测同一份母版首帧透明占比 **0.8196 → 0.0000**。结论：**手扣好的 MOV 永远不要
-> 再 key 一次**——只有绿幕片才需要先 chromakey 再编码。素材一律**直接从 MOV 母版归一化**，
-> 既拿到真 alpha，又少一代有损编码。编码用 **CRF 15**（2026-09-23 从 20 下调，实测显示
-> 尺寸 +1.19 dB），52 条合计 **82.6 MB**（上一版从被抠坏的 webm 转的是 70.6 MB —— 更小且
-> 更清晰）。
-
-> **上一批（38 条）相对其上一版的变化**：素材从 14 条增加到 38 条。`turn` / `clicks` 两个池子**第一次
-> 被填上**（`animationWeights.turn` 从 0 给回 5），宠物现在会真的转身（`facing` 会翻转）；
-> `深度思考碎碎念` 带中文对话气泡，是唯一必须 `noMirror` 的动画，已单独归进「文字」类；
-> **`events.workStatus` 六档也齐了**（冒泡思考/忙碌点按/清点归档/原地踱步张望/雀跃庆祝/
-> 垂头叹气冒汗），所以 `workStatusEnabled` 已打开。上一版两条锚点超差（`整体换装试色`
-> 脚底 −19px、`小提琴演奏` 脚底 −11px）随重出素材一并消失。
+> 这些 GIF 是**给 README 看的预览**，由 `python scripts/make-previews.py` 从
+> `assets/webm/` 生成（逐条按内容裁方窗 → 缩到 180×180，见
+> [`assets/README.md`](assets/README.md)）。GIF 只有 1 位透明，边缘比原片略硬；
+> 想要原画质直接开 `assets/webm/` 里的 webm，或把某条动画挂进自己的 README。
 
 ## 特性
 
@@ -116,8 +79,8 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 | `whisperEnabled` | **false** | 碎碎念：按 `eventsRefreshSec.whisper`（默认 300s）调一次当前模型生成一句话 + 播碎碎念动画。**这会消耗额度**，想省就改回 false（菜单「碎碎念」手动点播不受影响）。现状 false 是因为 `events.whisper` 那 3 条还没出片 |
 | `balanceEnabled` | **false** | 余额查询已去掉（宿主无 `/balance` 路由、渲染端不轮询不弹气泡）。该字段与 `eventsRefreshSec.balance` 都只是**兼容旧配置的必填项**，不再有任何行为；6 条余额档位动画还没出片，所以暂时也不在「动作」菜单里 |
 
-右键菜单：对话 / 设置 / 回到初始位置 / 退出桌宠 + 「动作」（**待机 1 · 转向 1 · 点击回应 2 ·
-移动 1 · 小动作 9 · 玩耍 15 · 吃什么 2 · 文字 1 · 工作状态 6**，全是已出片的，可直接点播）。**「碎碎念」这一项暂时不显示**——它要先请宿主
+右键菜单：对话 / 设置 / 回到初始位置 / 退出桌宠 + 「动作」（**待机 2 · 转向 1 · 点击回应 3 ·
+移动 1 · 小动作 15 · 玩耍 21 · 吃什么 2 · 文字 1 · 工作状态 6**，全是已出片的，可直接点播）。**「碎碎念」这一项暂时不显示**——它要先请宿主
 生成一句话（真花额度）再抽 `events.whisper` 里的动画播 + 弹气泡，而 3 条碎碎念动画还没出片，
 池子空时生成完什么都播不出来；出片并填进 config 后菜单项自动回来（判定见
 `runtime/electron-helper/renderer.js` 的 tools 列表）。
@@ -164,6 +127,9 @@ pnpm start       # = node lib/bin.js；开发期可用 pnpm dev（tsx 直跑 src
 ```sh
 .\scripts\pack-exe.ps1
 ```
+
+> 也可以**双击仓库根的 [`打包.bat`](打包.bat)**：它会先跑素材验收 + `pnpm verify:shell`
+> 两道前置闸，再调上面这个脚本；带 `fast` 参数跳闸、`clean` 参数只清中间产物。
 
 > ⚠️ **改 `scripts\pack-exe.ps1` 时必须保留文件开头的 UTF-8 BOM**（`EF BB BF`）。
 > Windows PowerShell 5.1 读**无 BOM** 的 `.ps1` 会按系统 ANSI（中文机器上是 GBK）解码，
@@ -215,12 +181,99 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 `shell/` 是它的**纯逻辑层源码**（物理、几何、菜单树、气泡节奏、对话面板覆盖层），
 `pnpm build:desktop-core` 把 `shell/` 打成 `runtime/electron-helper/shared-core.js` 供渲染层消费。
 
-## 与早期版本 DSH-PET 的关系（互不干扰）
+## 素材与授权
 
-本项目是本机另一份桌宠 **DSH-PET** 的独立发行版：同一套内核能力，但素材自制、外壳自己维护，
-且与本机上的 DSH-PET **完全隔离**，两个桌宠可以同时运行、互不干扰：
+**`assets/` 里的素材全部由本项目自制**——动画、设定图、表情图标、拖拽光标、托盘与应用图标
+都是自己出片或自己生成的，每个都能重建（生成脚本随仓库走）。代码按 [MIT](LICENSE)；
+第三方署名与完整条款见 [`NOTICE.md`](NOTICE.md)。
 
-| 身份项 | 本项目（DSH-PET-AGENT） | DSH-PET |
+| 内容 | 是什么 | 怎么来的 | 授权 |
+|---|---|---|---|
+| `assets/webm/` | **52 条动画**：待机 2 · 转向 1 · 点击回应 3 · 移动 1 · 小动作 15 · 玩耍 21 · 吃什么 2 · 文字 1 · 工作状态 6 | 手扣母版 → `python scripts/normalize-webm.py` 归一化出片 | 本项目自制，随代码 MIT |
+| `assets/preview/` | **9 条预览 GIF**（README 里展示的那 9 条，180×180、各 0.6~0.9 MB） | `python scripts/make-previews.py` 从 `assets/webm/` 生成 | 本项目自制，随代码 MIT |
+| `docs/images/character-design-sheet.png`<br>`docs/images/pose-sheet.png` | **角色设定图**（三视图/表情/细节/配色）与**动作姿势表**（12 个姿势） | 本项目自己出图，是出片与配色的事实来源 | 本项目自制，随代码 MIT |
+| `assets/pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自己出图 | 本项目自制，随代码 MIT |
+| `assets/pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16) | `python scripts/make-cursors.py` 生成 | 本项目自制，随代码 MIT |
+| `runtime/electron-helper/tray.png`<br>`packaging/app.ico` | 托盘图标 32×32、应用图标（16~256 共 7 档） | `python scripts/make-tray-icon.py` 从 `notify-done.png` 派生 | 本项目自制，随代码 MIT |
+| `assets/fonts/上首软糖体.ttf` | 界面字体 **站酷快乐体 2016**（HappyZcool-2016），**唯一非自制项** | 第三方字库 | 版权方条款（内嵌声明 © LuiBingKe 2016），**不适用** MIT |
+| `assets/config.jsonc` | 动画池 / 物理 / 联动的**唯一事实来源** | 本项目自己维护，只引用已出片的 52 条 | 随代码 MIT |
+
+> 文件名 `上首软糖体.ttf` 是渲染端**硬编码的槽位名**（不代表字体身份）：换字库时保持文件名
+> 不变即可，字面身份由 `scripts/inspect-font.mjs` 那道闸盯着。
+> 换角色形象后要重跑 `make-tray-icon.py` —— 忘了就还是上一个角色的脸挂在托盘上。
+
+**当前进度（2026-09-24）**：`assets/webm/` **52 条**，合计 **82.6 MB**。母版是 `素材加工\` 下
+那批**手扣、自带 alpha 通道**的 HEVC MOV（752×560 / 864×496 / 560×752，30fps，10.07~10.09s），
+经 `scripts/normalize-webm.py` 归一化成 640×360 VP9-Alpha。`assets/config.jsonc` **只引用这
+52 条**，`scripts/check-assets.ps1` **三项全绿**：配置共引用 52 个动画、0 个缺文件、全部
+640×360 带 alpha，锚点契约 51 条全部达标（最大偏差 3px，容差 ±8px）。上一版那 92 个
+"待出片槽位名"已按「以新素材为准」整体放弃。
+
+**最近三批（+14 条，38 → 52）**：`尤克里里弹唱` / `铃鼓欢拍` / `小号吹奏` / `手风琴拉奏`
+（乐器补充篇）、`星夜换装` / `樱色换装` / `糖果换装` / `万圣换装` / `新年换装` / `大小姐换装`
+（换装补充篇）、`芭蕾小跳` / `芭蕾踮脚旋转`（舞蹈补充篇）、**`待机-整理仪容`（待机补充篇
+——`idle` 池第一次有第二条）**、**`点击回应-生气跺脚`（点击回应补充篇——`clicks` 第三条）**。
+分池**按动作语义**、不按生成批次槽位（补充文档里的「槽位统一 小动作」指的是 `prompts.json`
+那个生成批次桶）：舞蹈与乐器进「玩耍」，换装进「小动作」；分类权重按条数重算为
+31/43/4/2（仍守恒 80）。
+
+> **idle / clicks 有两条 check-assets 守不住的契约**（它只查齐备 / 规格 / 锚点），
+> 得手工量，口径见 [`docs/动画设计与衔接规范.md`](docs/动画设计与衔接规范.md) §8
+> （640×360、只在两帧前景并集上取 `mean(|Δ|)`、不做任何对齐）：
+> `idle` 要求**首尾无缝**（链式重滚，滚回时不能跳），`clicks` 要求**末帧 ≈ 中立站姿**。
+> 本批实测：`待机-整理仪容` 接缝比值 **3.4×**（比 `休闲待机` 的 4.0× 还好，且接缝 9.90
+> **小于它自己最差的相邻帧差 12.78**）；`点击回应-生气跺脚` 首尾差 9.69，与已有两条
+> （9.26 / 9.63）同量级。两条都合格。
+
+> ✗ **`双马尾换装` 未采用**：母版变身光晕铺满整帧（内容 bbox 顶到 y=0 和 y=559），
+> 归一化脚本末尾「绝不裁内容」的兜底会把脚底从 330 顶到 315 —— **角色悬空 14px**，过不了
+> `check-anchor.py` 的 ±8px。它违反提示词里「全程与四边保持至少 8% 纯绿间距」，重出也不
+> 保证能避免（光晕是模型加的特效），故整条不纳入。母版仍在 `素材加工\归档\mov\`，
+> 没有对应 webm、也不在配置里。同类风险：**带大面积光晕/特效的换装片要先量内容 bbox
+> 有没有顶到画面上下边** —— 顶到了就会触发这个兜底。
+
+> **要跑这条管线，先装 ffmpeg**：`.\scripts\get-ffmpeg.ps1`。它是管线硬依赖
+> （`normalize-webm.py` / `check-assets.ps1` / `check-anchor.py` / `make-previews.py` 都调它），
+> 但单个文件 100~212 MB，**不进版本管理** —— 新克隆的仓库没有它，不装就跑不了出片。详见
+> [`tools/README.md`](tools/README.md)。
+
+> ⚠ **一条踩过的坑（2026-09-23）**：早期出片脚本里带 `colorkey=0x00FF00:0.1:0.1`（绿幕键），
+> 而母版是**手扣好、自带 alpha** 的 MOV。`colorkey` 只按 RGB 工作，会**丢弃输入 alpha、
+> 按 RGB 重新生成一张**——键色 `#00FF00` 在这些母版的**透明黑底**上匹配不到任何像素，于是
+> 新 alpha 全是 255，**成片完全不透明**（容器还照旧带 `alpha_mode:1`，实机才发现没有透明
+> 通道）。实测同一份母版首帧透明占比 **0.8196 → 0.0000**。结论：**手扣好的 MOV 永远不要
+> 再 key 一次**——只有绿幕片才需要先 chromakey 再编码。素材一律**直接从 MOV 母版归一化**，
+> 既拿到真 alpha，又少一代有损编码。编码用 **CRF 15**（2026-09-23 从 20 下调，实测显示
+> 尺寸 +1.19 dB），52 条合计 **82.6 MB**（上一版从被抠坏的 webm 转的是 70.6 MB —— 更小且
+> 更清晰）。
+
+> **上一批（38 条）相对其上一版的变化**：素材从 14 条增加到 38 条。`turn` / `clicks` 两个池子**第一次
+> 被填上**（`animationWeights.turn` 从 0 给回 5），宠物现在会真的转身（`facing` 会翻转）；
+> `深度思考碎碎念` 带中文对话气泡，是唯一必须 `noMirror` 的动画，已单独归进「文字」类；
+> **`events.workStatus` 六档也齐了**（冒泡思考/忙碌点按/清点归档/原地踱步张望/雀跃庆祝/
+> 垂头叹气冒汗），所以 `workStatusEnabled` 已打开。上一版两条锚点超差（`整体换装试色`
+> 脚底 −19px、`小提琴演奏` 脚底 −11px）随重出素材一并消失。
+
+## 与 dsh-pet 的关系
+
+**dsh-pet（[PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet)）是本项目的灵感来源**：
+"桌宠外壳 + Agent 内核"这个分工、以及**动画生成提示词**（形象段 / 动作段那套模板）都从它起步。
+本项目是它的**独立发行版**，最终版就是这一个仓库——本机另外几份（`DSH-PET`、
+`Archive-DSH Pet Agent`）都是开发过程的实验产物，不对外发布。
+
+它**不提供智能**：对话 / 碎碎念 / 工作状态 / 工作状态动画联动，全部是本项目自己的 host 与
+agent 实现（上游那套 `ctx.llm` 宿主层一行没用）；它**也不提供素材**：52 条动画、设定图、
+图标、光标、托盘图都是本项目自己出片的。
+
+> **代码上有一处必须如实交代的沿用**：`shell/shared/` 的 16 个纯逻辑文件是 dsh-pet
+> **v0.2.11 `src/shared/*.ts` 的逐字节副本**（故意保持逐字节，好让将来还能整体 diff / 升级），
+> `runtime/electron-helper/` 与 `src/vendor/` 也都是在它之上改的。这部分按 MIT 保留署名，
+> 完整范围与逐项差异见 [`NOTICE.md`](NOTICE.md) §1 与 [`shell/README.md`](shell/README.md)
+> 的覆盖清单。除此之外的代码与全部素材都归本项目。
+
+本机若同时留着实验版，两者**完全隔离、可同时运行**（端口与状态目录都分开）：
+
+| 身份项 | 本项目（DSH-PET-AGENT） | 实验版 DSH-PET |
 |---|---|---|
 | npm 包名 / cordis NAME | `dsh-pet-agent` | `dsh-pet` |
 | HTTP 端口 | **7341** | 7340 |
@@ -239,15 +292,16 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 
 | 路径 | 作用 |
 |---|---|
-| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。素材清单、规格契约与生成脚本见 [`assets/README.md`](assets/README.md) |
+| `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。动画、预览 GIF、规格契约与生成脚本见 [`assets/README.md`](assets/README.md) |
+| `docs/images/` | 角色设定图与动作姿势表（自有素材，出片与配色的基准） |
 | `runtime/electron-helper/` | Electron 桌宠壳（透明窗、渲染、菜单、托盘）；其中 `shared-core.js` 是 **构建产物** |
 | `shell/` | 外壳纯逻辑层源码：`shared/`（常量/选择器/多屏几何/运动/物理/配置拍平/菜单/气泡等纯逻辑）+ `ours/`（本项目自己的实现：常驻流式对话面板、面板落位、气泡节奏、菜单夹取）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js`。详见 [`shell/README.md`](shell/README.md) |
 | `src/` | host 侧 TS：`bin.ts`（内核组合入口）、`server.ts`（HTTP 路由）、`computer-use.ts`、`model-config.ts`、`autostart.ts`、`vendor/` |
-| `scripts/` | **16 个脚本**：素材管线 6 + 外壳验收闸 9 + 打包 1。清单、作用、何时跑见 [`scripts/README.md`](scripts/README.md) |
-| `docs/` | 动画提示词模板、引擎衔接规范、形象设定图；**文档总入口是 [`docs/README.md`](docs/README.md)** |
+| `scripts/` | **17 个脚本**：素材管线 7 + 外壳验收闸 9 + 打包 1。清单、作用、何时跑见 [`scripts/README.md`](scripts/README.md) |
+| `docs/` | 动画提示词模板与补充篇、引擎衔接规范、形象设定图；**文档总入口是 [`docs/README.md`](docs/README.md)** |
 | `packaging/` | `electron-builder.yml`、`launcher.cjs`（打包版启动器）、`app.ico`；`staging*/` 是组装中间产物，可随时清（`打包.bat clean`） |
 | `tools/` | `ffmpeg.exe`（**不进版本管理**，用 `scripts/get-ffmpeg.ps1` 装）+ `chat-smoke/` 面板自检。见 [`tools/README.md`](tools/README.md) |
-| `licenses/` | 第三方许可证全文（DeepSeek Harness 等）；适用范围与署名见 [`NOTICE.md`](NOTICE.md) |
+| `licenses/` | 第三方许可证全文（DeepSeek Harness、dsh-pet 等）；适用范围与署名见 [`NOTICE.md`](NOTICE.md) |
 | `patches/` | pnpm `patchedDependencies`（node-pty 补丁） |
 | `lib/` | `pnpm build` 的产物（`cordis.patch.prod.yml` 指向这里） |
 | `dist/` | `scripts/pack-exe.ps1` 的产物：安装版 exe + `win-unpacked/` |
@@ -258,8 +312,8 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 ## 许可证
 
 - **代码**（含桌宠外壳与内核组合层）: [MIT](LICENSE)
-- **素材**（`assets/webm/` 动画、`assets/pic/` 图标与光标、托盘与应用图标）: 本项目自制，
-  随代码按 MIT 处理
+- **素材**（`assets/webm/` 动画、`assets/preview/` 预览、`docs/images/` 设定图、
+  `assets/pic/` 图标与光标、托盘与应用图标）: 本项目自制，随代码按 MIT 处理
 - **界面字体**（`assets/fonts/上首软糖体.ttf`）: 第三方字库**站酷快乐体 2016**
   （HappyZcool-2016，© LuiBingKe 2016），按版权方条款使用，**不适用** MIT
 - 第三方代码署名、字体与依赖的完整条款见 [`NOTICE.md`](NOTICE.md)

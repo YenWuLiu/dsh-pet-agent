@@ -1,17 +1,25 @@
 # NOTICE — 第三方代码与素材署名 / Third-Party Notices
 
-DSH-PET-AGENT 的**素材（`assets/` 下的动画、图标、光标，以及由图标派生的托盘/应用图标）
-全部为本项目自制**；**桌宠外壳的代码源自上游 dsh-pet（MIT）**，本项目在其上做了大量修改，
-按 MIT 保留署名。
+DSH-PET-AGENT 的**素材（`assets/` 与 `docs/images/` 下的动画、预览、设定图、图标、光标，
+以及由图标派生的托盘/应用图标）全部为本项目自制**。**dsh-pet 是本项目的灵感来源**：
+"桌宠外壳 + Agent 内核"这个分工与动画生成提示词都从它起步；代码上，桌宠外壳的纯逻辑层
+沿用了它 v0.2.11 的一组文件（详见 §1），本项目在其上做了大量修改，按 MIT 保留署名。
 
-All **assets** shipped in `assets/` (animations, icons, cursors and the tray/app icons derived
-from them) are **produced by this project**. The **desktop-shell code derives from the upstream
-dsh-pet project (MIT)** and has been substantially modified here; upstream attribution is kept
-below. The only third-party asset still used at runtime is the UI font (see §2).
+All **assets** shipped in `assets/` and `docs/images/` (animations, previews, the character
+design sheet, icons, cursors and the tray/app icons derived from them) are **produced by this
+project**. **dsh-pet is this project's inspiration**: the "desktop shell + agent kernel" split
+and the animation prompts started there; on the code side, the desktop shell's pure-logic
+layer reuses a set of its v0.2.11 files (§1) and has been substantially modified here.
+Upstream attribution is kept below. The only third-party asset used at runtime is the UI font
+(see §2).
 
 ---
 
 ## 1. 桌宠外壳代码：dsh-pet（MIT）
+
+> **这一节是署名，不是"关系"**：本项目与 dsh-pet 的关系见
+> [`README.md`](README.md) 的「与 dsh-pet 的关系」——它是本项目的灵感来源，本项目是它的
+> 独立发行版。下面列出的只是在**代码层面**确实沿用/改动过的文件范围（MIT 要求保留署名）。
 
 - **上游仓库**: <https://github.com/PC2005-cloud/dsh-pet>
 - **代码许可证**: MIT（见 `licenses/LICENSE.dsh-pet`）
@@ -44,6 +52,11 @@ below. The only third-party asset still used at runtime is the UI font (see §2)
     `scripts/check-anchor.py`。
   - `assets/pic/notify-*.png` — 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），
     256×256，本项目自己出图。
+  - `assets/preview/*.gif` — README 展示用的**预览 GIF ×9**，由
+    `python scripts/make-previews.py` 从 `assets/webm/` 生成（180×180，逐条按内容裁方窗）。
+  - `docs/images/character-design-sheet.png`、`docs/images/pose-sheet.png` — **角色设定图**
+    （三视图 / 表情 / 细节 / 配色）与**动作姿势表**（12 个姿势），本项目自己出图，
+    是出片时的形象基准与配色来源。
   - `assets/pic/cursor-*.png` — 拖拽光标 ×2（张开 / 握起），32×32、热点 (16,16)，
     由 `python scripts/make-cursors.py` 生成（几何图形 + 角色配色，可重建）。
   - `runtime/electron-helper/tray.png` 与 `packaging/app.ico` — 由
@@ -78,5 +91,6 @@ typescript（Apache-2.0）等，均保留其各自许可证。
 
 ---
 
-**致谢**: 上游 dsh-pet 提供了桌宠外壳代码的起点与纯逻辑层参考；动画规范文档
-（`docs/`）来自本项目早前的自制素材工程。
+**致谢**: dsh-pet 是本项目的灵感来源——"桌宠外壳 + Agent 内核"的分工与动画生成提示词
+都从它起步，桌宠外壳的纯逻辑层也沿用了它的一组文件（§1）；动画规范文档（`docs/`）与
+全部素材来自本项目自己的素材工程。
