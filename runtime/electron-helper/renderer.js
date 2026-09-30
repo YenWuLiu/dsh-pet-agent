@@ -47,8 +47,12 @@ const WHISPER_URL = BASE + '/whisper';
 // 窗口四周外扩 = 该比例 × 宠物尺寸：为气泡 / 未来可能的弹窗预留显示空间；
 // 外扩区透明且点击穿透（只有身体命中区可交互）。单点可调——按实际观感改这里。
 const WINDOW_MARGIN_RATIO = 0.5;
+// 撞墙/撞顶挤压的速度阈值（px/s）：低于它只当"贴着墙滑行"，不给反馈。
+// 落地那一下另有 landingSquash 的 0.8 下限兜底（轻落也压一下），墙面没有这个语境——
+// 不设阈值的话，宠物沿墙滑落会一路抖。600 ≈ 一次中等力度的甩抛。
+const HIT_SQUASH_MIN_SPEED = 600;
 // 换片方式：硬切——新画面首帧上屏后一次性掀掉旧层，不做交叉淡化/首尾焊接
-// （上游素材每段首尾都是同一站姿，本来就是连贯的；见 switchTo）。
+// （本项目这批动作每段首尾都是同一个站姿，本来就是连贯的；见 switchTo）。
 
 // ---------- 全局状态 ----------
 const rootEl = document.getElementById('root');
@@ -859,12 +863,14 @@ class PetSprite {
     let state = { x: px, y: py, vx, vy };
     let last = performance.now();
     let prevGrounded = false; // 落地 Q 弹：只在空中→地面转换帧触发一次
+    let prevWall = ''; // 撞墙 Q 弹：'left' / 'right' / 'top'，同样只在"刚贴上"那一帧触发
     const step = () => {
       if (this.throwToken !== token) return;
       const now = performance.now();
       const dt = (now - last) / 1000;
       last = now;
       const fallingVy = state.vy; // 本帧积分前的竖直速度（正=下落）：即落地冲击速度
+      const impactVx = state.vx; // 本帧积分前的水平速度（正=向右）：即撞左右墙的冲击速度
       const res = S.throwStep(state, dt, bounds, this.physics);
       state = { x: res.x, y: res.y, vx: res.vx, vy: res.vy };
       this.throwState = state;
@@ -905,12 +911,32 @@ class PetSprite {
         }
       }
       this.sendBounds(res.x, res.y);
+      const frontEl = this.front === 0 ? this.videoA : this.videoB;
       // 落地 Q 弹：只在空中→地面转换帧触发一次，力度随冲击速度（轻落 0.8 ~ 重砸 0.55）
       const grounded = res.y >= bounds.maxY - 1;
       if (res.bounced && grounded && !prevGrounded) {
-        const frontEl = this.front === 0 ? this.videoA : this.videoB;
         this.startSquash(frontEl, S.landingSquash(fallingVy));
       }
+      // 撞墙/撞顶反馈：同一套 Q 弹曲线，锚点改到接触面、压的是法向轴（左/右墙压 X，顶部压 Y）。
+      // 触发条件与落地同构——throwStep 的 `bounced` 在"贴住边界"期间**逐帧为真**，
+      // 所以必须判上升沿（prevWall），否则宠物沿墙滑落会一路抖；
+      // 再叠一道 HIT_SQUASH_MIN_SPEED 速度阈值，轻擦不留痕。
+      const wall = grounded
+        ? ''
+        : res.x <= bounds.minX + 1
+          ? 'left'
+          : res.x >= bounds.maxX - 1
+            ? 'right'
+            : this.physics.ceilingBounce && res.y <= bounds.minY + 1
+              ? 'top'
+              : '';
+      if (wall && wall !== prevWall) {
+        const impact = wall === 'top' ? Math.abs(fallingVy) : Math.abs(impactVx);
+        if (impact >= HIT_SQUASH_MIN_SPEED) {
+          this.startSquash(frontEl, S.landingSquash(impact), wall);
+        }
+      }
+      prevWall = wall;
       prevGrounded = grounded;
       if (res.atRest) {
         this.throwRef = null;
@@ -932,25 +958,55 @@ class PetSprite {
     this.startThrow(this.pos.x, this.pos.y, vx, vy);
   }
 
-  /** Q 弹挤压：视频垂直压扁再回弹（曲线在 shared，S.squashScale）。
+  /** Q 弹挤压：视频压扁再回弹（曲线在 shared，S.squashScale）。
    *  · target 可传单个元素或数组（多层同屏时一起压，避免"压扁的新层 + 全高的旧层"看出双影；
    *    换片是硬切，正常只有一层在屏上，调用方传单个元素）；
-   *  · 锚点 = 引擎脚底线 FEET_Y（不是画面底边）：以画面底边为锚点压扁会把角色往地里压
-   *    （0.55 深度时脚底下沉 ~14px），锚在脚底线上才是"贴地压扁"。
-   *  depth = 下压幅度（点击固定 0.55；落地按冲击速度 S.landingSquash 动态取）。reduce-motion 时跳过。 */
-  startSquash(target, depth = S.SQ_SQUASH) {
+   *  · hit 决定**压哪个轴、锚在哪条边**——撞哪里就往哪里压：
+   *      null（点击/落地）→ 竖直压，锚在引擎脚底线 FEET_Y（不是画面底边：以画面底边为锚点压扁
+   *        会把角色往地里压，0.55 深度时脚底下沉 ~14px，锚在脚底线上才是"贴地压扁"）；
+   *      'left' / 'right' → 水平压：**被撞的那条边不动**，另一侧压进来。
+   *  depth = 下压幅度（点击固定 0.55；落地/撞墙按冲击速度 S.landingSquash 动态取）。reduce-motion 时跳过。
+   *
+   *  ⚠ **横向压不能用"把 origin 挪到被撞的边"来做**（补撞墙反馈时踩的坑，别删这段）：
+   *  视频层的常态 transform 是 `scaleX(-1)`（facing=right），它与挤压共用同一个 transform-origin；
+   *  origin 的 x 一旦离开 50%，镜像就变成**绕那条边缘线**翻转——整只宠物被搬到盒子外一个身位
+   *  （实测 dL/dR = ±442 = 元素宽，看着就是瞬移）。所以横向压一律把 origin 留在 50%（= 镜像的
+   *  翻转线），用 `translateX(±w(1-s)/2)` 把"那条边不动"表达出来：右墙 +、左墙 −，
+   *  再按镜像翻转符号（镜像后视觉右边缘对应的是元素左侧）。竖直压不受影响：origin x 本来就在 50%。
+   *  · 复原把 origin 设回 `''`（CSS 默认 50% 50%），而不是"本次挤压开始时的值"：撞墙后 220ms 内
+   *    就可能落地、两次挤压接续时后者会捕获到前者设的**中间态**，恢复后把边缘 origin 永久留在
+   *    元素上——此后只要 facing=right，整只宠物就偏出一个身位（本机实测复现过，属既有隐患，
+   *    横向压引入边缘 origin 后才显形）。 */
+  startSquash(target, depth = S.SQ_SQUASH, hit = null) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const els = (Array.isArray(target) ? target : [target]).filter(Boolean);
     if (!els.length) return;
     const token = ++this.squashToken;
     if (this.squashRef !== null) cancelAnimationFrame(this.squashRef);
-    const origins = els.map((e) => e.style.transformOrigin);
-    const anchor = '50% ' + (100 * S.FEET_Y) / S.CANVAS_H + '%';
+    const wall = hit === 'left' || hit === 'right';
+    const mirror = this.facing === 'right';
+    const axis = wall ? 'scaleX' : 'scaleY';
+    // 横向：origin 恒 50% 50%；竖直：脚底线（点击/落地）或顶边（撞顶）
+    const anchor = wall ? '50% 50%' : hit === 'top' ? '50% 0%' : '50% ' + (100 * S.FEET_Y) / S.CANVAS_H + '%';
+    // w = 布局宽度（不受 transform 影响）：横向压的补偿量随压扁系数变，放进 apply 里算
+    const w = wall ? els[0].offsetWidth : 0;
+    const sign = hit === 'right' !== mirror ? 1 : -1;
     for (const e of els) e.style.transformOrigin = anchor;
     const t0 = performance.now();
     const apply = (scale) => {
-      const tf = (this.facing === 'right' ? 'scaleX(-1) ' : '') + 'scaleY(' + scale + ')';
+      const shift = wall ? (sign * (w * (1 - scale))) / 2 : 0;
+      const tf =
+        (mirror ? 'scaleX(-1) ' : '') +
+        (shift ? 'translateX(' + shift.toFixed(2) + 'px) ' : '') +
+        axis + '(' + scale + ')';
       for (const e of els) e.style.transform = tf;
+    };
+    const restore = () => {
+      for (const e of els) {
+        e.style.transformOrigin = '';
+        // 恢复纯镜像（若期间 switchTo 重置过 transform，也以镜像为准）
+        e.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
+      }
     };
     const step = () => {
       if (this.squashToken !== token) return;
@@ -960,13 +1016,11 @@ class PetSprite {
         this.squashRef = requestAnimationFrame(step);
       } else {
         this.squashRef = null;
-        els.forEach((e, i) => {
-          e.style.transformOrigin = origins[i];
-          // 恢复纯镜像（若期间 switchTo 重置过 transform，也以镜像为准）
-          e.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
-        });
+        this.squashTargets = null;
+        restore();
       }
     };
+    this.squashTargets = els;
     this.squashRef = requestAnimationFrame(step);
   }
 
@@ -975,6 +1029,15 @@ class PetSprite {
     if (this.squashRef !== null) {
       cancelAnimationFrame(this.squashRef);
       this.squashRef = null;
+    }
+    // 被中断也要把元素放回静止态：否则留着压扁的 transform / 边缘 origin（销毁路径下无所谓，
+    // 但「换片 / 抓住 / 回位」中断时不清就会一直歪着）
+    if (this.squashTargets) {
+      for (const e of this.squashTargets) {
+        e.style.transformOrigin = '';
+        e.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
+      }
+      this.squashTargets = null;
     }
   }
 
