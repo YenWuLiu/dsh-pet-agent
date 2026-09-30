@@ -68,6 +68,23 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 
 ## 快速开始
 
+### 一、直接用（不碰代码走这条）
+
+| 产物 | 体积 | 说明 |
+|---|---|---|
+| [**`DSH-PET-AGENT-0.1.0-setup.exe`**](https://github.com/YenWuLiu/dsh-pet-agent/releases/tag/v0.1.0) | 286 MB | **NSIS 安装版（推荐）**：按用户装到 `%LOCALAPPDATA%\Programs`，**不需要管理员权限**；可改安装路径，带开始菜单 / 桌面快捷方式与卸载项。冷启动约 2 秒 |
+| [`dsh-pet-agent-0.1.0-win-unpacked.zip`](https://github.com/YenWuLiu/dsh-pet-agent/releases/tag/v0.1.0) | 373 MB | **免安装绿色版**：解压后直接跑 `win-unpacked\DSH-PET-AGENT.exe`，冷启动同样约 2 秒 |
+
+> 两个包都在 [**Releases → v0.1.0**](https://github.com/YenWuLiu/dsh-pet-agent/releases/tag/v0.1.0)，
+> 同一页有 `SHA256SUMS.txt` 可核对；两者是**同一个构建**的两种打包方式。
+> **不需要装 Node.js 与 pnpm** —— 内核与 node 运行时都打包在里面了。
+> 系统要求：Windows 10 / 11 **x64**。
+
+装好后：右键宠物 → 设置 → 「模型配置…」填协议 / 接口地址 / API Key / 模型 id，
+双击宠物就能说话；右键 → 动作可以点播全部 52 条动画。
+
+### 二、从源码跑
+
 ```sh
 pnpm install     # Electron 下载慢的话，.npmrc 已配 npmmirror 镜像
 pnpm build       # tsc 编译到 lib/（首次或改动 src/ 后）
@@ -118,6 +135,21 @@ pnpm start       # = node lib/bin.js；开发期可用 pnpm dev（tsx 直跑 src
 > 只出安装版（2026-09 起）：早先那个单文件 portable 版每次启动都要把 ~260 MB 的 app
 > 解包到 `%TEMP%`，冷启动实测约 3 分钟——拿来「开机自启」体验很差，已去掉。
 > 要绿色部署就用 `win-unpacked`（免安装、启动一样快）。
+
+**发布到仓库**：这两个产物都不进 git —— 安装版 286 MB、绿色版解压后 823 MB，
+**都超过 GitHub 单文件 100 MB 的硬上限**（`dist/` 也本来就是 gitignore 的）。
+发布走 **GitHub Release 附件**：
+
+```sh
+# dist/win-unpacked 压成绿色版 zip，然后连同安装版一起传上去
+cd dist; tar -a -cf dsh-pet-agent-<ver>-win-unpacked.zip win-unpacked
+gh release upload v<ver> DSH-PET-AGENT-<ver>-setup.exe dsh-pet-agent-<ver>-win-unpacked.zip SHA256SUMS.txt
+```
+
+> 上传前**先核对 `SHA256SUMS.txt` 与产物对得上**，并抽一两个文件从 zip 里解出来做逐字节比对 ——
+> 几百 MB 的包传到一半坏了，只有下载的人会发现。
+> 当前发的是 [**Releases → v0.1.0**](https://github.com/YenWuLiu/dsh-pet-agent/releases/tag/v0.1.0)，
+> 见上面的「快速开始 → 一、直接用」。
 
 ### 对话面板自检
 
