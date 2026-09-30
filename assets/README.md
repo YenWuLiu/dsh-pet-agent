@@ -6,7 +6,7 @@
 | 内容 | 状态 | 授权 |
 |---|---|---|
 | `webm/` | 本项目自制的动画（**现有 52 条**；手扣带 alpha 的 MOV 母版经 `normalize-webm.py` 归一化） | 本项目自制，按仓库根 LICENSE（MIT） |
-| `preview/` | README 展示用的**预览 GIF ×9**（180×180，以引擎角色框为中心取方窗；由 `scripts/make-previews.py` 从 `webm/` 生成） | 本项目自制，按仓库根 LICENSE（MIT） |
+| `preview/` | README 展示用的**预览 GIF ×6**（180×180，以引擎角色框为中心取方窗；由 `scripts/make-previews.py` 从 `webm/` 生成） | 本项目自制，按仓库根 LICENSE（MIT） |
 | `pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自制，按仓库根 LICENSE（MIT） |
 | `pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16)，由 `scripts/make-cursors.py` 生成 | 本项目自制，按仓库根 LICENSE（MIT） |
 | `fonts/上首软糖体.ttf` | 界面字体 **站酷快乐体 2016（HappyZcool-2016）**，**唯一的第三方素材** | 版权方条款（内嵌 `(c) Copyright LuiBingKe 2016`），**不适用** MIT |
@@ -68,7 +68,7 @@
 |---|---|---|
 | `pic/notify-*.png` ×6 | 256×256 PNG（带 alpha），文件名即渲染端的槽位名 | 本项目自己出图；换角色形象后整套替换，**文件名不要改** |
 | `pic/cursor-*.png` ×2 | 32×32 PNG（带 alpha），**热点固定在 (16,16)** | `python scripts/make-cursors.py`（几何图形 + 角色配色，改常量即可重出）；画布尺寸变了要同步改 `renderer.js` 里 CSS 的 `16 16` |
-| `preview/*.gif` ×9 | 180×180 GIF（1 位透明），对应 README 里展示的那 9 条 | `python scripts/make-previews.py`（默认清单 = 每个动作池一条；`--all` 出全部 52 条） |
+| `preview/*.gif` ×6 | 180×180 GIF（1 位透明），对应 README 里展示的那 6 条 | `python scripts/make-previews.py`（清单见脚本里的 `CURATED`；`--all` 出全部 52 条） |
 | `runtime/electron-helper/tray.png` | 32×32（高 DPI 下也是原生像素） | `python scripts/make-tray-icon.py`——按 alpha 裁紧再缩，别直接缩整张 256 图（否则 16px 托盘里脸只剩 14px） |
 | `packaging/app.ico` | 16/24/32/48/64/128/256 七档 | 同上（同一脚本一起产出；electron-builder 要求至少含 256×256） |
 

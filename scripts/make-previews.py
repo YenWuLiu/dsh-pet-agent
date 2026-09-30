@@ -24,10 +24,13 @@
    （上游那批预览 GIF 也是这个样子），不是参数没调好——要看原画质直接开 `assets/webm/`。
 
 用法：
-  python scripts/make-previews.py                # 出 README 展示的那 9 条（默认清单）
+  python scripts/make-previews.py                # 出 README 展示的那几条（默认清单 CURATED）
   python scripts/make-previews.py 吃Token 撸猫    # 出指定的几条
-  python scripts/make-previews.py --all          # 出全部 52 条（约 25 MB，README 只用 9 条）
-  python scripts/make-previews.py --side 280     # 改输出边长（默认 224）
+  python scripts/make-previews.py --all          # 出全部 52 条（约 25 MB，README 只用 CURATED 那几条）
+  python scripts/make-previews.py --side 280     # 改输出边长（默认 180）
+
+**本脚本不删文件**：`assets/preview/` 里不属于本次输出的 .gif 会被列成「孤儿」提示出来，
+确认要删再加 `--prune`。清单改动后忘了清孤儿，README 不引用它们、但它们会一直躺在仓库里。
 """
 from __future__ import annotations
 
@@ -61,18 +64,15 @@ ALPHA_CUT = 128          # 半透明像素归"不透明"还是"透明"的分界
 # 输出边长、帧率和色数**（224px/14fps/128 色会到 1.7 MB，是现在的两倍）。
 DITHER = 'sierra2_4a'
 
-# README 里展示的那几条：**每个动作池各一条**，挑的是各池里最有代表性的一条。
-# （池子划分见 assets/config.jsonc 的 animations / events，条数见 README 的素材表。）
+# README 里展示的那几条。**不是"每个池一条"**——转向池没选（`东张西望`），移动 / 吃什么 /
+# 文字三个池也没选；玩耍池选了两条（都带乐器，动作差异大）。顺序即 README 表格里的顺序。
 CURATED = [
-    '休闲待机',           # 待机 —— 也是全部素材的锚点基准
-    '东张西望',           # 转向 —— 整片朝向会真的翻过来
-    '点击回应-开心跃动',   # 点击回应
-    '螃蟹走路',           # 移动
-    '整体换装试色',        # 小动作
-    '优雅女仆舞',         # 玩耍
-    '吃Token',           # 吃什么
-    '深度思考碎碎念',      # 文字 —— 唯一带中文气泡、必须 noMirror 的一条
-    '工作状态-冒泡思考',   # 工作状态
+    '待机-整理仪容',       # 待机 —— idle 池的第二条
+    '点击回应-生气跺脚',    # 点击回应
+    '铃鼓欢拍',           # 玩耍
+    '吹笛子',             # 玩耍
+    '趴地熟睡',           # 小动作
+    '工作状态-冒泡思考',    # 工作状态
 ]
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -172,6 +172,8 @@ def main() -> int:
     ap.add_argument('--out', default=str(DEFAULT_OUT), help='输出目录（默认 assets/preview）')
     ap.add_argument('--side', type=int, default=SIDE, help='输出正方形边长（默认 %d）' % SIDE)
     ap.add_argument('--fps', type=int, default=FPS, help='输出帧率（默认 %d）' % FPS)
+    ap.add_argument('--prune', action='store_true',
+                    help='删掉输出目录里不属于本次的 .gif（默认只列出来，不删）')
     args = ap.parse_args()
 
     if not FFMPEG.exists():
@@ -213,6 +215,22 @@ def main() -> int:
     print()
     print('合计 %.1f MB / %d 条。README 用 <img src="assets/preview/<名>.gif" width="160"> 引用（3 个一行）；' % (total / 1048576, len(names)))
     print('      GIF 的透明是 1 位（边缘略硬属格式限制），原画质看 assets/webm/。')
+
+    # 孤儿：目录里不属于本次输出的 .gif。默认只报不删——用 `make-previews.py <单个名字>` 调试时
+    # 顺手清空整个目录，会把 README 正在引用的另外几条一起干掉。
+    wanted = {'%s.gif' % n for n in names}
+    orphans = sorted(p for p in out_dir.glob('*.gif') if p.name not in wanted)
+    if orphans:
+        print()
+        print('孤儿 %d 个（本次没生成，README 也不该再引用它们）：' % len(orphans))
+        for p in orphans:
+            print('  %s  %.0f KB' % (p.name, p.stat().st_size / 1024))
+        if args.prune:
+            for p in orphans:
+                p.unlink()
+            print('  已删除（--prune）。')
+        else:
+            print('  确认要删就加 --prune 重跑。')
     return 0
 
 

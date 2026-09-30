@@ -52,7 +52,7 @@ Upstream attribution is kept below. The only third-party asset used at runtime i
     `scripts/check-anchor.py`。
   - `assets/pic/notify-*.png` — 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），
     256×256，本项目自己出图。
-  - `assets/preview/*.gif` — README 展示用的**预览 GIF ×9**，由
+  - `assets/preview/*.gif` — README 展示用的**预览 GIF ×6**，由
     `python scripts/make-previews.py` 从 `assets/webm/` 生成（180×180，逐条按内容裁方窗）。
   - `docs/images/character-design-sheet.png`、`docs/images/pose-sheet.png` — **角色设定图**
     （三视图 / 表情 / 细节 / 配色）与**动作姿势表**（12 个姿势），本项目自己出图，

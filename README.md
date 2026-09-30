@@ -35,22 +35,21 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 
 ## 她会什么
 
-每个动作池挑一条（**待机 / 转向 / 点击回应 / 移动 / 小动作 / 玩耍 / 吃什么 / 文字 /
-工作状态**），下面 9 条就是它们。全部 **52 条**在 `assets/webm/`，VP9-Alpha，
+下面 6 条是挑出来展示的 —— **待机 · 点击回应 · 玩耍 ×2 · 小动作 · 工作状态**。全部
+**52 条**在 `assets/webm/`（转向、移动、吃什么、文字等池也都有），VP9-Alpha，
 **实机播放时是透明背景**。
 
-| 待机 | 转向 | 点击回应 |
+| **待机** · 整理仪容 | **点击回应** · 生气跺脚 | **玩耍** · 铃鼓欢拍 |
 |---|---|---|
-| <img src="assets/preview/休闲待机.gif" width="160" alt="休闲待机" title="休闲待机"> | <img src="assets/preview/东张西望.gif" width="160" alt="东张西望" title="东张西望"> | <img src="assets/preview/点击回应-开心跃动.gif" width="160" alt="点击回应-开心跃动" title="点击回应-开心跃动"> |
-| **移动** | **小动作** | **玩耍** |
-| <img src="assets/preview/螃蟹走路.gif" width="160" alt="螃蟹走路" title="螃蟹走路"> | <img src="assets/preview/整体换装试色.gif" width="160" alt="整体换装试色" title="整体换装试色"> | <img src="assets/preview/优雅女仆舞.gif" width="160" alt="优雅女仆舞" title="优雅女仆舞"> |
-| **吃什么** | **文字** | **工作状态** |
-| <img src="assets/preview/吃Token.gif" width="160" alt="吃Token" title="吃Token"> | <img src="assets/preview/深度思考碎碎念.gif" width="160" alt="深度思考碎碎念" title="深度思考碎碎念"> | <img src="assets/preview/工作状态-冒泡思考.gif" width="160" alt="工作状态-冒泡思考" title="工作状态-冒泡思考"> |
+| <img src="assets/preview/待机-整理仪容.gif" width="160" alt="待机-整理仪容" title="待机-整理仪容"> | <img src="assets/preview/点击回应-生气跺脚.gif" width="160" alt="点击回应-生气跺脚" title="点击回应-生气跺脚"> | <img src="assets/preview/铃鼓欢拍.gif" width="160" alt="铃鼓欢拍" title="铃鼓欢拍"> |
+| **玩耍** · 吹笛子 | **小动作** · 趴地熟睡 | **工作状态** · 冒泡思考 |
+| <img src="assets/preview/吹笛子.gif" width="160" alt="吹笛子" title="吹笛子"> | <img src="assets/preview/趴地熟睡.gif" width="160" alt="趴地熟睡" title="趴地熟睡"> | <img src="assets/preview/工作状态-冒泡思考.gif" width="160" alt="工作状态-冒泡思考" title="工作状态-冒泡思考"> |
 
 > 这些 GIF 是**给 README 看的预览**，由 `python scripts/make-previews.py` 从
 > `assets/webm/` 生成（以引擎角色框为中心取方窗 → 缩到 180×180，见
 > [`assets/README.md`](assets/README.md)）。GIF 只有 1 位透明，边缘比原片略硬；
-> 想要原画质直接开 `assets/webm/` 里的 webm，或把某条动画挂进自己的 README。
+> 想要原画质直接开 `assets/webm/` 里的 webm，或把某条动画挂进自己的 README ——
+> 挑哪几条由脚本里的 `CURATED` 决定。
 
 ## 特性
 
@@ -190,7 +189,7 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 | 内容 | 是什么 | 怎么来的 | 授权 |
 |---|---|---|---|
 | `assets/webm/` | **52 条动画**：待机 2 · 转向 1 · 点击回应 3 · 移动 1 · 小动作 15 · 玩耍 21 · 吃什么 2 · 文字 1 · 工作状态 6 | 手扣母版 → `python scripts/normalize-webm.py` 归一化出片 | 本项目自制，随代码 MIT |
-| `assets/preview/` | **9 条预览 GIF**（README 里展示的那 9 条，180×180、各 0.6~0.9 MB） | `python scripts/make-previews.py` 从 `assets/webm/` 生成 | 本项目自制，随代码 MIT |
+| `assets/preview/` | **6 条预览 GIF**（README 里展示的那 6 条，180×180、各 0.6~0.9 MB） | `python scripts/make-previews.py` 从 `assets/webm/` 生成 | 本项目自制，随代码 MIT |
 | `docs/images/character-design-sheet.png`<br>`docs/images/pose-sheet.png` | **角色设定图**（三视图/表情/细节/配色）与**动作姿势表**（12 个姿势） | 本项目自己出图，是出片与配色的事实来源 | 本项目自制，随代码 MIT |
 | `assets/pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自己出图 | 本项目自制，随代码 MIT |
 | `assets/pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16) | `python scripts/make-cursors.py` 生成 | 本项目自制，随代码 MIT |

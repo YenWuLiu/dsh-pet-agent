@@ -14,7 +14,7 @@
 | `normalize-webm.py` | MOV 母版 → 640×360 VP9-Alpha（量角色高 → 缩放 → 对齐首帧锚点 → 裁切含道具的窗） | 出片。平时不用手敲，走 `素材加工\出片.bat` |
 | `check-assets.ps1` | 素材三项验收：配置引用的文件齐备 + 640×360/真 alpha + 锚点契约 | 出片后、打包前 |
 | `check-anchor.py` | 锚点契约的实查部分（只认最大连通块，忽略水印），被 `check-assets.ps1` 调用 | 一般不单独跑 |
-| `make-previews.py` | README 展示用的预览 GIF（`assets/preview/`，逐条按内容裁方窗 → 180×180） | **改动 README 展示清单、或重出了被展示的那几条动画时**。GitHub 不能内嵌仓库里的 webm，README 上那 9 条靠它 |
+| `make-previews.py` | README 展示用的预览 GIF（`assets/preview/`，以引擎角色框为中心取方窗 → 180×180） | **改动 README 展示清单、或重出了被展示的那几条动画时**。GitHub 不能内嵌仓库里的 webm，README 上那 6 条靠它 |
 | `make-tray-icon.py` | 从 `assets/pic/` 的角色表情派生 `runtime/electron-helper/tray.png` + `packaging/app.ico` | **换角色形象后**。忘了就还是上一个角色的脸挂在托盘上 |
 | `make-cursors.py` | 生成 `assets/pic/cursor-grab.png` / `cursor-grabbing.png`（32×32、热点 (16,16)，角色配色） | **换配色/换画布尺寸时**。文件名是渲染端槽位名，不要改 |
 
@@ -22,7 +22,7 @@
 .\scripts\check-assets.ps1          # 日常验收
 .\scripts\get-ffmpeg.ps1 -Check     # 只体检 ffmpeg，不下载
 python scripts\normalize-webm.py <MOV目录> assets\webm --anchor 休闲待机
-python scripts\make-previews.py     # 重出 README 那 9 条预览 GIF
+python scripts\make-previews.py     # 重出 README 那 6 条预览 GIF
 ```
 
 ## 二、外壳验收闸（9）
