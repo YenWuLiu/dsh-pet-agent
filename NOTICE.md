@@ -37,7 +37,7 @@ below. The only third-party asset still used at runtime is the UI font (see §2)
 ## 2. 素材：全部本项目自制；界面字体是第三方字库
 
 - **本项目自制（随代码按 MIT 处理）**:
-  - `assets/webm/` — **38 条动画**，由本项目自行生产：手扣带 alpha 的 MOV 母版经
+  - `assets/webm/` — **52 条动画**，由本项目自行生产：手扣带 alpha 的 MOV 母版经
     `scripts/normalize-webm.py` 归一化为 640×360 VP9-Alpha。规格契约与生产流程见
     [`assets/README.md`](assets/README.md)，生成提示词见 `docs/动画生成清单.md`，
     衔接契约见 `docs/动画设计与衔接规范.md`，验收工具见 `scripts/check-assets.ps1`、
