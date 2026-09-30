@@ -1,3 +1,7 @@
 # 统一行尾：文本文件 LF 入库、LF 检出（与上游 dsh-pet 同一约定），避免 CRLF 落盘
 # text=auto：二进制（png/webm/gif/ttf/ico）自动识别、不做转换
 * text=auto eol=lf
+# 例外：.bat 检出必须是 CRLF —— cmd.exe 解析 LF-only 批处理不可靠（标签/goto 那类构造会断），
+# 而入库仍走 LF，与上面同一条约定。注意「入库 LF + 检出 CRLF」不会改写文件编码，
+# 所以 打包.bat 里的 GBK 中文不受影响。
+*.bat text eol=crlf
