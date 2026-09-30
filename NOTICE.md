@@ -53,10 +53,11 @@ Upstream attribution is kept below. The only third-party asset used at runtime i
   - `assets/pic/notify-*.png` — 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），
     256×256，本项目自己出图。
   - `assets/preview/*.gif` — README 展示用的**预览 GIF ×6**，由
-    `python scripts/make-previews.py` 从 `assets/webm/` 生成（180×180，逐条按内容裁方窗）。
-  - `docs/images/character-design-sheet.png`、`docs/images/pose-sheet.png` — **角色设定图**
-    （三视图 / 表情 / 细节 / 配色）与**动作姿势表**（12 个姿势），本项目自己出图，
-    是出片时的形象基准与配色来源。
+    `python scripts/make-previews.py` 从 `assets/webm/` 生成（180×180，以引擎角色框为中心取方窗）。
+  - `docs/images/whale-maid-{design-sheet,expressions,props}.png` — **角色设定图 ×3**：
+    角色设定（三视图 / 表情 / 细节 / 配色板）、表情与作画参考（头部转面 / 眨眼 4 帧 /
+    情绪脸 8 种 / 口型 6 种 / 尾巴 3 帧）、道具与特效（饭碗三态 / 迷你鲸鱼伙伴 / 特效元素 /
+    交互道具）。本项目自己出图，是出片时的形象基准、配色来源与道具出处。
   - `assets/pic/cursor-*.png` — 拖拽光标 ×2（张开 / 握起），32×32、热点 (16,16)，
     由 `python scripts/make-cursors.py` 生成（几何图形 + 角色配色，可重建）。
   - `runtime/electron-helper/tray.png` 与 `packaging/app.ico` — 由

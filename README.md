@@ -24,14 +24,14 @@ Electron 桌宠壳与外壳纯逻辑层可重建、可验收（`pnpm verify:shel
 头两侧各一片鲸鱼鳍状大耳朵、身后拖着一条分叉的鲸鱼大尾巴；深藏青长袖女仆长裙配
 白色荷叶边围裙（围裙上印虎鲸徽记），白短袜黑圆头小皮鞋。日系赛璐璐手绘风、粗描边。
 
-| 设定图 | 动作姿势表 |
-|---|---|
-| <img src="docs/images/character-design-sheet.png" width="400" alt="角色设定图：三视图 / 表情 / 细节 / 配色" title="角色设定图"> | <img src="docs/images/pose-sheet.png" width="400" alt="动作姿势表：12 个姿势（SHIMEJI 风）" title="动作姿势表"> |
-| 三视图 · 表情 · 细节 · 配色——**出片时的形象基准** | 12 个姿势（SHIMEJI 风）——**动作规划的底稿** |
+| 角色设定图 | 表情 · 口型 · 尾巴帧 | 道具与特效 |
+|---|---|---|
+| <a href="docs/images/whale-maid-design-sheet.png"><img src="docs/images/whale-maid-design-sheet.png" width="260" alt="角色设定图" title="角色设定图"></a> | <a href="docs/images/whale-maid-expressions.png"><img src="docs/images/whale-maid-expressions.png" width="260" alt="表情 · 口型 · 尾巴帧" title="表情 · 口型 · 尾巴帧"></a> | <a href="docs/images/whale-maid-props.png"><img src="docs/images/whale-maid-props.png" width="260" alt="道具与特效" title="道具与特效"></a> |
+| **三视图 · 表情 · 细节 · 配色板**<br>出片时的形象基准 | **头部转面 · 眨眼 4 帧 · 情绪脸 8 种 · 口型 6 种 · 尾巴 3 帧**<br>表情与作画参考 | **饭碗三态与筷子 · 迷你鲸鱼伙伴 · 特效元素 · 交互道具**<br>动画里的道具与特效出处 |
 
-> 两张图都在 [`docs/images/`](docs/images)，是**本项目的自有素材**（与全部动画同一套配色，
-> 生成脚本 `scripts/make-cursors.py` 里的颜色常量就取自这里的色板）。要换角色形象，
-> 改的是这两张图 + `assets/webm/` + 重跑 `make-tray-icon.py`。
+> 三张都在 [`docs/images/`](docs/images)，**点图看全尺寸**。它们是**本项目的自有素材**——
+> 与全部动画同一套配色，`scripts/make-cursors.py` 的颜色常量就取自设定图那张的色板。
+> 要换角色形象，改的是这三张图 + `assets/webm/` + 重跑 `make-tray-icon.py`。
 
 ## 她会什么
 
@@ -190,7 +190,7 @@ node tools/chat-smoke/panel-test.mjs        # 55 项断言，无需 Electron / �
 |---|---|---|---|
 | `assets/webm/` | **52 条动画**：待机 2 · 转向 1 · 点击回应 3 · 移动 1 · 小动作 15 · 玩耍 21 · 吃什么 2 · 文字 1 · 工作状态 6 | 手扣母版 → `python scripts/normalize-webm.py` 归一化出片 | 本项目自制，随代码 MIT |
 | `assets/preview/` | **6 条预览 GIF**（README 里展示的那 6 条，180×180、各 0.6~0.9 MB） | `python scripts/make-previews.py` 从 `assets/webm/` 生成 | 本项目自制，随代码 MIT |
-| `docs/images/character-design-sheet.png`<br>`docs/images/pose-sheet.png` | **角色设定图**（三视图/表情/细节/配色）与**动作姿势表**（12 个姿势） | 本项目自己出图，是出片与配色的事实来源 | 本项目自制，随代码 MIT |
+| `docs/images/whale-maid-*.png` | **角色设定图 ×3**：角色设定（三视图 / 表情 / 细节 / 配色板）、表情与作画参考（头部转面 / 眨眼 4 帧 / 情绪脸 8 种 / 口型 6 种 / 尾巴 3 帧）、道具与特效（饭碗三态 / 迷你鲸鱼伙伴 / 特效元素 / 交互道具） | 本项目自己出图，是出片与配色的事实来源 | 本项目自制，随代码 MIT |
 | `assets/pic/notify-*.png` | 通知表情图标 ×6（完成 / 出错 / 提问 / 审批 / 截断 / 自检），256×256 | 本项目自己出图 | 本项目自制，随代码 MIT |
 | `assets/pic/cursor-*.png` | 拖拽光标 ×2（张开 / 握起），32×32，热点 (16,16) | `python scripts/make-cursors.py` 生成 | 本项目自制，随代码 MIT |
 | `runtime/electron-helper/tray.png`<br>`packaging/app.ico` | 托盘图标 32×32、应用图标（16~256 共 7 档） | `python scripts/make-tray-icon.py` 从 `notify-done.png` 派生 | 本项目自制，随代码 MIT |
@@ -292,7 +292,7 @@ agent 实现（上游那套 `ctx.llm` 宿主层一行没用）；它**也不提�
 | 路径 | 作用 |
 |---|---|
 | `assets/` | 素材包 + `config.jsonc`（动画池/物理/联动的唯一事实来源）。动画、预览 GIF、规格契约与生成脚本见 [`assets/README.md`](assets/README.md) |
-| `docs/images/` | 角色设定图与动作姿势表（自有素材，出片与配色的基准） |
+| `docs/images/` | **角色设定图 ×3**（角色设定 / 表情作画参考 / 道具与特效），自有素材，出片与配色的基准 |
 | `runtime/electron-helper/` | Electron 桌宠壳（透明窗、渲染、菜单、托盘）；其中 `shared-core.js` 是 **构建产物** |
 | `shell/` | 外壳纯逻辑层源码：`shared/`（常量/选择器/多屏几何/运动/物理/配置拍平/菜单/气泡等纯逻辑）+ `ours/`（本项目自己的实现：常驻流式对话面板、面板落位、气泡节奏、菜单夹取）+ `legacy/`（旧产物基准）；`pnpm build:desktop-core` 产出上面那个 `shared-core.js`。详见 [`shell/README.md`](shell/README.md) |
 | `src/` | host 侧 TS：`bin.ts`（内核组合入口）、`server.ts`（HTTP 路由）、`computer-use.ts`、`model-config.ts`、`autostart.ts`、`vendor/` |

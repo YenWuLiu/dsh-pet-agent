@@ -34,7 +34,7 @@ SS = 8
 # 描边宽度（最终像素）——1.5px 在 16px 的托盘/桌面尺度上是"看得见但不臃肿"
 OUTLINE = 1.5
 
-# 配色：与角色设定集（docs/images/character-design-sheet.png）同一套
+# 配色：与角色设定图（docs/images/whale-maid-design-sheet.png）同一套
 FILL = (255, 255, 255, 255)      # MAID WHITE：手掌填充
 STROKE = (35, 42, 92, 255)       # DEEP NAVY：勾边（同时保证浅背景上不糊）
 
